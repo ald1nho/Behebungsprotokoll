@@ -1,0 +1,34 @@
+{
+    "keys": {
+        "de-DE": {
+            "Title": "Behebungsprotokoll",
+            "ShortTitle": "Behebungsprotokoll",
+            "Pages.ListTitle": "Behebungsprotokolle",
+            "ApproveButton.Title": "Protokoll abschließen",
+            "ApproveButton.Label": "Abschließen",
+            "ApproveButton.Message": "Möchten Sie das Protokoll wirklich abschließen?",
+            "Grunddaten.Title": "Grunddaten",
+            "Eigenleistungen.Title": "Eigenleistungen",
+            "Fremdleistungen.Title": "Fremdleistungen",
+            "Schadensbeschreibung.Title": "Schadensbeschreibung",
+            "Zusammenfassung.Title": "Zusammenfassung",
+            "Signatur.Title": "Digitale Signatur",
+            "Validation.Required": "Dieses Feld ist erforderlich",
+            "Validation.Number": "Bitte geben Sie eine gültige Zahl ein",
+            "GPS.Capturing": "GPS wird erfasst...",
+            "GPS.Success": "GPS erfolgreich erfasst",
+            "GPS.Error": "GPS konnte nicht erfasst werden",
+            "Photo.Add": "Foto hinzufügen",
+            "Photo.Remove": "Foto löschen",
+            "Signature.Clear": "Signatur löschen",
+            "Signature.Required": "Digitale Signatur ist erforderlich"
+        }
+    },
+    "langSchema": ["de"],
+    "langCulture": ["de-DE"],
+    "langLabels": ["Deutsch"],
+    "langDefault": "de",
+    "langPDF": "user-defined",
+    "schemaVersion": "2.0.0",
+    "metadata": {}
+}

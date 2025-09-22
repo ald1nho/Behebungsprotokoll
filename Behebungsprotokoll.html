@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Behebungsprotokoll</title>
+    <link rel="stylesheet" data-hf-href="behebungsprotokoll.css">
+    <!-- Load helper for both HF runtime (data-hf-src) and plain browser (src) -->
+    <script src="BehebungsprotokollHelper.js" data-hf-src="BehebungsprotokollHelper.js" defer></script>
+</head>
+<body>
+    <form>
+        <!-- Template Variables -->
+        <var data-hf-name="info"
+            data-hf-version="1.0.0"
+            data-hf-date="2025-09-02T12:00:00.000Z"
+            data-hf-min-app-version="10.0.0"
+            data-hf-min-server-version="10.0.0">
+        </var>
+        <var data-hf-name="Title">Behebungsprotokoll</var>
+        
+        <!-- Define namespace for BehebungsprotokollHelper -->
+        <script type="text/javascript">
+            // Ensure namespace exists for both WinJS and global window
+            window.HFFormdefinition = window.HFFormdefinition || {};
+            window.HFFormdefinition.BehebungsprotokollHelper = window.HFFormdefinition.BehebungsprotokollHelper || {};
+            
+            if (typeof WinJS !== 'undefined' && WinJS.Namespace) {
+                WinJS.Namespace.define("HFFormdefinition.BehebungsprotokollHelper", {});
+            }
+            
+            // Debug script to check if function is available
+            setTimeout(function() {
+                console.log('Checking if function is available...');
+                console.log('window.HFFormdefinition:', window.HFFormdefinition);
+                console.log('BehebungsprotokollHelper:', window.HFFormdefinition?.BehebungsprotokollHelper);
+                console.log('calculateEigenleistungRowRepeatable:', window.HFFormdefinition?.BehebungsprotokollHelper?.calculateEigenleistungRowRepeatable);
+            }, 1000);
+        </script>
+        
+        <!-- FormDev Catalog Includes -->
+        <var data-hf-name="FormDevCatalogIncludes"
+            data-hf-catalogs='[
+                {"name": "Bezirke", "catalog": "catalog.Bezirke.json"},
+                {"name": "Katastrophenarten", "catalog": "catalog.Katastrophenarten.json"},
+                {"name": "Straßenmeistereien", "catalog": "catalog.Straßenmeistereien.json"}
+            ]'>
+        </var>
+
+        <!-- Navigation: Pages > Tabs > Blocks -->
+        <ol>
+            <!-- Page 1: Grunddaten -->
+            <li data-hf-title="Grunddaten" id="page-grunddaten">
+                <ol>
+                    <li data-hf-title="Allgemeine Angaben" id="tab-grunddaten">
+        <!-- zwei Blöcke für die 2‑Spalten‑Ansicht -->
+        <a href="#block-grunddaten-1"></a>
+        <a href="#block-grunddaten-2"></a>
+      </li>
+                </ol>
+            </li>
+
+            <!-- Page 2: Beschreibung -->
+            <li data-hf-title="Schadensbeschreibung" id="page-beschreibung">
+                <ol>
+                    <li data-hf-title="Details" id="tab-beschreibung">
+                        <a href="#block-beschreibung-1"></a>
+                        <a href="#block-beschreibung-2"></a>
+                    </li>
+                </ol>
+            </li>
+
+            <!-- Page 3: Leistungen -->
+            <li data-hf-title="Leistungen" id="page-leistungen">
+                <ol>
+                    <!-- Eigenleistungen als Repeating Unit (2. Ebene) -->
+                    <li data-hf-title="Eigenleistungen"
+                        id="tab_eigenleistungen"
+                        data-hf-repeating='{
+                            "min": 1,
+                            "label": "Eigenleistung",
+                            "labelAdd": "Eigenleistung hinzufügen",
+                            "labelRemove": "Entfernen",
+                            "anchors": false,
+                            "toolbar": true
+                        }'>
+                        <a href="#eigenleistungen-block1" data-hf-fullwidth="true"></a>
+                    </li>
+                    
+                    <!-- Fremdleistungen als Repeating Unit (2. Ebene) -->
+                    <li data-hf-title="Fremdleistungen"
+                        id="tab_fremdleistungen"
+                        data-hf-repeating='{
+                            "min": 1,
+                            "label": "Fremdleistung",
+                            "labelAdd": "Fremdleistung hinzufügen",
+                            "labelRemove": "Entfernen",
+                            "anchors": false,
+                            "toolbar": true
+                        }'>
+                        <a href="#fremdleistungen-block1" data-hf-fullwidth="true"></a>
+                    </li>
+
+                    <!-- Summen / Zusammenfassung (nicht wiederholbar) -->
+                    <li data-hf-title="Zusammenfassung" id="tab_leistungen_sum">
+                        <a href="#block-leistungen-fremd"></a>
+                    </li>
+                </ol>
+            </li>
+
+            <!-- Page 4: Abschluss -->
+            <li data-hf-title="Abschluss" id="page-abschluss">
+                <ol>
+                    <li data-hf-title="Signatur" id="tab-signatur">
+                        <a href="#block-signatur"></a>
+                        <a href="#block-approve"></a>
+                    </li>
+                </ol>
+            </li>
+        </ol>
+    </form>
+
+    <!-- Template Objects -->
+    <div data-hf-template="FormHeaderTitle">
+        <h1>Behebungsprotokoll - Katastrophenschäden an Landesstraßen</h1>
+    </div>
+
+    <div data-hf-template="FormTitle">
+        <span data-hf-bind="innerHTML: data.FormTitle">Behebungsprotokoll</span>
+    </div>
+
+    <div data-hf-template="FormList">
+        <div class="list-item">
+            <span data-hf-bind="textContent: item.lfd_nr"></span>
+            <span data-hf-bind="textContent: item.strasse"></span>
+            <span data-hf-bind="textContent: item.schadensdatum"></span>
+        </div>
+        
+    </div>
+
+    <!-- Block Definitionen -->
+    
+    <!-- Grunddaten Block: Alle Angaben -->
+    <!-- Block 1: linke Spalte -->
+<div id="block-grunddaten-1"
+     data-hf-block
+     data-hf-title="Allgemeine Angaben – Teil 1"
+     data-hf-columns="12">
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Lfd. Nr. -->
+    <div id="lfd_nr"
+         data-hf-control="NumericField"
+         data-hf-options='{
+           "label": "Lfd. Nr.",
+           "step": 1,
+           "min": 0,
+           "decimals": 0,
+           "placeholder": "z. B. 001",
+           "required": true
+         }'></div>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Gemeinde -->
+    <input id="gemeinde"
+           type="text"
+           data-hf-control="TextField"
+           data-hf-options='{
+             "label": "Gemeinde",
+             "placeholder": "Gemeindename",
+             "required": true
+           }'>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Bezirk -->
+    <div id="bezirk"
+         data-hf-control="ComboBox"
+         data-hf-options='{
+           "label": "Bezirk",
+           "url": "/api/catalogs/Bezirke",
+           "dataTextField": "Name",
+           "dataValueField": "ID",
+           "placeholder": "Bezirk wählen...",
+           "required": true
+         }'></div>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Art Katastrophe -->
+    <div id="art_katastrophe"
+         data-hf-control="ComboBox"
+         data-hf-options='{
+           "label": "Art Katastrophe",
+           "url": "/api/catalogs/Katastrophenarten",
+           "dataTextField": "Name",
+           "dataValueField": "ID",
+           "placeholder": "Katastrophenart wählen...",
+           "required": true
+         }'></div>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Straßenmeisterei -->
+    <div id="strassenmeisterei"
+         data-hf-control="ComboBox"
+         data-hf-options='{
+           "label": "Straßenmeisterei",
+           "url": "/api/catalogs/Straßenmeistereien",
+           "dataTextField": "Name",
+           "dataValueField": "ID",
+           "placeholder": "Straßenmeisterei wählen...",
+           "required": true
+         }'></div>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Straße -->
+     <input id="strasse"
+           type="text"
+           data-hf-control="TextField"
+           data-hf-options='{
+             "label": "Straße",
+             "placeholder": "Straßenname",
+             "required": true
+           }'>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Kilometer -->
+    <div id="kilometer"
+         data-hf-control="NumericField"
+         data-hf-options='{
+           "label": "Kilometer",
+           "step": 0.1,
+           "min": 0,
+           "placeholder": "z. B. 12.3",
+           "required": true
+         }'></div>
+  </div></div>
+</div>
+
+<!-- Block 2: rechte Spalte -->
+<div id="block-grunddaten-2"
+     data-hf-block
+     data-hf-title="Allgemeine Angaben – Teil 2"
+     data-hf-columns="12">
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Schadensdatum -->
+    <input id="schadensdatum" type="date"
+           data-hf-control="DateTimePicker"
+           data-hf-options='{
+             "label": "Schadensdatum von",
+             "required": true
+           }'>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Schadensdatum -->
+    <input id="schadensdatum-2" type="date"
+           data-hf-control="DateTimePicker"
+           data-hf-options='{
+             "label": "Schadensdatum bis",
+             "required": true
+           }'>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Wiederherstellung -->
+    <input id="wiederherstellung" type="date"
+           data-hf-control="DateTimePicker"
+           data-hf-options='{
+             "label": "Wiederherstellung von",
+                "required": true
+           }'>
+  </div></div>
+  <div data-hf-row><div data-hf-column="12">
+    <!-- Wiederherstellung -->
+    <input id="wiederherstellung-2" type="date"
+           data-hf-control="DateTimePicker"
+           data-hf-options='{
+             "label": "Wiederherstellung bis",
+                "required": true
+           }'>
+  </div></div>
+</div>
+
+    <!-- Beschreibung Block 1: Schadensbeschreibung -->
+    <div data-hf-block 
+         data-hf-columns="12" 
+         data-hf-title="Schadensbeschreibung"
+         id="block-beschreibung-1">
+        
+        <div data-hf-row>
+            <div data-hf-column="12">
+                <div id="schadens_beschreibung"
+                     data-hf-control="TextField"
+                     data-hf-options='{
+                         "label": "Beschreibung des Schadens",
+                         "multiline": true,
+                         "required": true,
+                         "placeholder": "Detaillierte Beschreibung des Schadens eingeben..."
+                     }'>
+                </div>
+            </div>
+        </div>
+
+        
+    </div>
+
+    <!-- Beschreibung Block 2: Dokumentation -->
+    <div data-hf-block 
+         data-hf-columns="12" 
+         data-hf-title="Dokumentation"
+         id="block-beschreibung-2">
+        
+        <div data-hf-row>
+            <div data-hf-column="12">
+                <div id="photo_documentation"
+                     data-hf-control="PicturePicker"
+                     data-hf-options="{
+                         label: 'Foto-Dokumentation',
+                         multiple: true,
+                         required: false
+                     }">
+                </div>
+            </div>
+        </div>
+
+        <div data-hf-row>
+            <div data-hf-column="6">
+                <input type="checkbox" 
+                       id="beilage_fotos" 
+                       value="fotos"
+                       data-hf-control="CheckBox"
+                       data-hf-options="{
+                           label: 'Fotos (ab 1.500 €)'
+                       }">
+            </div>
+            <div data-hf-column="6">
+                <input type="checkbox" 
+                       id="beilage_rechnungen" 
+                       value="rechnungen"
+                       data-hf-control="CheckBox"
+                       data-hf-options="{
+                           label: 'Rechnungen extern'
+                       }">
+            </div>
+        </div>
+    </div>
+
+    <!-- Leistungen: Block 1 - Eigenleistungen mit data-hf-repeatable -->
+   
+    <!-- Template: Eigenleistungen (eine Zeile) - 1:1 Copy from Spare Parts -->
+    <div id="eigenleistungen-block1"
+        data-hf-template>
+        <div class="grid column3">
+            <div class="r1 c1 cspan2 get-row-combo">
+                <div class="grid column3">
+                    <div class="r1 c1">
+                        <input type="text"
+                            id="eigenleistung_index"
+                            data-hf-control="TextField"
+                            data-hf-options='{"label":"#","disabled":true,"defaultValue":"1"}' />
+                    </div>
+                    <div class="r1 c2">
+                        <input type="text"
+                            id="eigenleistung_bezeichnung"
+                            data-hf-control="TextField"
+                            data-hf-options='{"label":"Bezeichnung Eigenleistung","placeholder":"Bezeichnung eingeben"}' />
+                    </div>
+                    <div class="r1 c3">
+                        <input type="number"
+                            id="eigenleistung_menge"
+                            data-hf-control="NumericField"
+                            data-hf-options='{"label":"Menge","step":0.01,"min":0,"placeholder":"Menge","onChanged":HFFormdefinition.BehebungsprotokollHelper.calculateEigenleistungRowRepeatable}' />
+                    </div>
+                </div>
+            </div>
+            <div class="r1 c3">
+                <div class="grid column3">
+                    <div class="r1 c1">
+                        <select id="eigenleistung_einheit"
+                            data-hf-control="DropDownList"
+                            data-hf-options='{"label":"Einheit"}'>
+                            <option value="Std.">Std.</option>
+                            <option value="Stk.">Stk.</option>
+                            <option value="m">m</option>
+                            <option value="m²">m²</option>
+                            <option value="m³">m³</option>
+                            <option value="kg">kg</option>
+                            <option value="t">t</option>
+                        </select>
+                    </div>
+                    <div class="r1 c2">
+                        <input type="number"
+                            id="eigenleistung_ep"
+                            data-hf-control="NumericField"
+                            data-hf-options='{"label":"EP","step":0.01,"min":0,"placeholder":"Einzelpreis","onChanged":HFFormdefinition.BehebungsprotokollHelper.calculateEigenleistungRowRepeatable}' />
+                    </div>
+                    <div class="r1 c3">
+                        <input type="text"
+                            id="eigenleistung_summe"
+                            data-hf-control="TextField"
+                            data-hf-options='{"label":"Summe in €","disabled":true,"defaultValue":"0.00"}' />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template: Fremdleistungen (eine Zeile) -->
+    <div id="fremdleistungen-block1"
+        data-hf-template>
+        <div class="grid column3">
+            <div class="r1 c1 cspan2 get-row-combo">
+                <div class="grid column2">
+                    <div class="r1 c1">
+                        <input type="text"
+                            id="fremdleistung_index"
+                            data-hf-control="TextField"
+                            data-hf-options='{"label":"#","disabled":true,"defaultValue":"1"}' />
+                    </div>
+                    <div class="r1 c2">
+                        <input type="text"
+                            id="fremdleistung_bezeichnung"
+                            data-hf-control="TextField"
+                            data-hf-options='{"label":"Bezeichnung Fremdleistung","placeholder":"Bezeichnung eingeben"}' />
+                    </div>
+                </div>
+            </div>
+            <div class="r1 c3">
+                <div class="grid column2">
+                    <div class="r1 c1">
+                        <input type="text"
+                            id="fremdleistung_rechnung"
+                            data-hf-control="TextField"
+                            data-hf-options='{"label":"Rechnung","placeholder":"Rechnungsnummer"}' />
+                    </div>
+                    <div class="r1 c2">
+                        <input type="number"
+                            id="fremdleistung_summe"
+                            data-hf-control="NumericField"
+                            data-hf-options='{"label":"Summe in €","step":0.01,"min":0,"placeholder":"Summe Netto","onChanged":HFFormdefinition.BehebungsprotokollHelper.calculateFremdleistungTotalRepeatable}' />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Entfernt: alter Fremdleistungen-Block (nun Tab-basiert) -->
+
+    <!-- Leistungen: Block 2 - Zusammenfassung -->
+    <div data-hf-block
+         data-hf-columns="12"
+         data-hf-title="Zusammenfassung"
+         id="block-leistungen-fremd">
+        
+        <!-- Summe Eigenleistungen -->
+        <div data-hf-row>
+            <div data-hf-column="12">
+                <div style="margin: 20px 0; padding: 6px; border: 2px solid #ddd; background-color: #f9f9f9;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Summe Eigenleistungen in €:</label>
+                    <input type="text" 
+                           id="summe_eigenleistungen"
+                           data-hf-control="TextField"
+                           data-hf-options='{"label":"Summe Eigenleistungen in €","disabled":true,"defaultValue":"0.00"}'
+                           style="width: 200px; padding: 6px; font-size: 16px; font-weight: bold; background-color: #fff; border: 1px solid #ccc;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Summen Fremdleistungen (Netto/MwSt/Brutto) -->
+        <div data-hf-row>
+            <div data-hf-column="4">
+                <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Summe Fremdleistungen netto:</label>
+                    <input type="text" 
+                           id="summe_fremdleistungen_netto"
+                           data-hf-control="TextField"
+                           data-hf-options='{"disabled":true,"defaultValue":"0.00"}'
+                           style="width: 100%; padding: 8px; font-weight: bold; background-color: #fff; border: 1px solid #ccc;">
+                </div>
+            </div>
+            <div data-hf-column="4">
+                <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">MwSt (20%):</label>
+                    <input type="text" 
+                           id="mwst_fremdleistungen"
+                           data-hf-control="TextField"
+                           data-hf-options='{"disabled":true,"defaultValue":"0.00"}'
+                           style="width: 100%; padding: 8px; font-weight: bold; background-color: #fff; border: 1px solid #ccc;">
+                </div>
+            </div>
+            <div data-hf-column="4">
+                <div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; background-color: #f9f9f9;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Summe Fremdleistungen brutto:</label>
+                    <input type="text" 
+                           id="summe_fremdleistungen_brutto"
+                           data-hf-control="TextField"
+                           data-hf-options='{"disabled":true,"defaultValue":"0.00"}'
+                           style="width: 100%; padding: 8px; font-weight: bold; background-color: #fff; border: 1px solid #ccc;">
+                </div>
+            </div>
+        </div>
+        <div data-hf-row>
+            <div data-hf-column="4">
+                <div style="margin: 20px 0; padding: 15px; border: 2px solid #007bff; background-color: #e7f1ff;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Eigenleistung in €:</label>
+                    <input type="text" 
+                           id="summary_eigenleistung"
+                           data-hf-control="TextField"
+                           data-hf-options='{"disabled":true,"defaultValue":"0.00"}'
+                           style="width: 100%; padding: 10px; font-size: 16px; font-weight: bold; background-color: #fff; border: 1px solid #007bff;">
+                </div>
+            </div>
+            <div data-hf-column="4">
+                <div style="margin: 20px 0; padding: 15px; border: 2px solid #007bff; background-color: #e7f1ff;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Fremdleistung in €:</label>
+                    <input type="text" 
+                           id="summary_fremdleistung"
+                           data-hf-control="TextField"
+                           data-hf-options='{"disabled":true,"defaultValue":"0.00"}'
+                           style="width: 100%; padding: 10px; font-size: 16px; font-weight: bold; background-color: #fff; border: 1px solid #007bff;">
+                </div>
+            </div>
+            <div data-hf-column="4">
+                <div style="margin: 20px 0; padding: 15px; border: 3px solid #28a745; background-color: #d4edda;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px; font-size: 18px;">GESAMT in €:</label>
+                    <input type="text" 
+                           id="summary_gesamt"
+                           data-hf-control="TextField"
+                           data-hf-options='{"disabled":true,"defaultValue":"0.00"}'
+                           style="width: 100%; padding: 12px; font-size: 18px; font-weight: bold; background-color: #fff; border: 2px solid #28a745; color: #28a745;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signatur Block -->
+    <div data-hf-block 
+         data-hf-columns="12" 
+         data-hf-title="Digitale Signatur"
+         id="block-signatur">
+        
+        <div data-hf-row>
+            <div data-hf-column="12">
+                <p>Durch Ihre Unterschrift bestätigen Sie die Richtigkeit und Vollständigkeit der Angaben.</p>
+            </div>
+        </div>
+
+        <div data-hf-row>
+            <div data-hf-column="12">
+                <div id="signatur"
+                     data-hf-control="Signature"
+                     data-hf-options="{
+                         label: 'Digitale Signatur',
+                         required: true,
+                         tooltip: 'Bitte hier unterschreiben!',
+                         clearButton: true,
+                         saveTimeout: 10,
+                         openInOverlay: {
+                             type: 'mobile',
+                             rotateToLandscape: true
+                         },
+                         printMetadata: true,
+                         printMetadataParts: ['Location','Signer','ItemID','DateTime'],
+                         forceUnsafe: true
+                     }">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve Block -->
+    <div data-hf-block 
+         data-hf-columns="12" 
+         data-hf-title="Formular abschließen"
+         id="block-approve">
+        
+        <div data-hf-row>
+            <div data-hf-column="12">
+                <div id="approve_button"
+                     data-hf-control="ApproveButton"
+                     data-hf-options="{
+                         action: 'GoTo_ListApproved',
+                         buttonType: 'large',
+                         buttonHeading: 'Protokoll abschließen',
+                         buttonLabel: 'Abschließen',
+                         confirmDialogTitle: 'Protokoll abschließen?',
+                         confirmDialogMessage: 'Möchten Sie das Behebungsprotokoll wirklich abschließen?'
+                     }">
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

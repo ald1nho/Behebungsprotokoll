@@ -1,0 +1,13 @@
+[
+    {"ID": "BM", "Name": "Bruck-Mürzzuschlag"},
+    {"ID": "DL", "Name": "Deutschlandsberg"},
+    {"ID": "GR", "Name": "Graz"},
+    {"ID": "GU", "Name": "Graz-Umgebung"},
+    {"ID": "HB", "Name": "Hartberg-Fürstenfeld"},
+    {"ID": "LB", "Name": "Leibnitz"},
+    {"ID": "LI", "Name": "Liezen"},
+    {"ID": "MT", "Name": "Murtal"},
+    {"ID": "SO", "Name": "Südoststeiermark"},
+    {"ID": "VO", "Name": "Voitsberg"},
+    {"ID": "WZ", "Name": "Weiz"}
+]

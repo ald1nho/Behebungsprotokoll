@@ -1,0 +1,46 @@
+/* ========================================================
+   MINIMAL TEST CSS - Only Demo_Field_Service patterns
+   ======================================================== */
+
+/* ScanButton pattern from Demo_Field_Service */
+.get-row-combo > .hf-combobox {
+    width: calc(100% - 38px) !important;
+    float: left;
+}
+
+[id^=scanBtn] {
+    float: right;
+    padding: 0;
+}
+
+[id^=scanBtn] > div > button {
+    width: 30px !important;
+}
+
+/* Disabled field styling */
+input[id*="eigenleistung_index"],
+input[id*="eigenleistung_summe"] {
+    background-color: #f5f5f5;
+}
+
+/* Print/PDF hide */
+@media print {
+    .pdf-hide {
+        display: none !important;
+    }
+}
+
+/* Eigenleistungen responsive layout */
+@media (max-width: 1024px) {
+    [id^="eigenleistungen-block"] > .grid.column3 {
+        display: block;
+    }
+
+    [id^="eigenleistungen-block"] > .grid.column3 > div {
+        width: 100%;
+    }
+
+    [id^="eigenleistungen-block"] > .grid.column3 > div + div {
+        margin-top: 16px;
+    }
+}

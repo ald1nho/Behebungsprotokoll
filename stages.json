@@ -1,0 +1,15 @@
+{
+    "stages": {
+        "ST1": {
+            "first": true,
+            "label": "Erfassung",
+            "next": {
+                "workflows": [],
+                "buttonLabel": "Abschließen",
+                "dialogMessage": "Möchten Sie das Behebungsprotokoll abschließen?",
+                "dialogTitle": "Behebungsprotokoll abschließen"
+            }
+        }
+    },
+    "workflows": {}
+}

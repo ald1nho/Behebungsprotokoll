@@ -1,0 +1,51 @@
+{
+    "title": "Behebungsprotokoll",
+    "culture": "de-DE",
+    "attachments": [
+        "Behebungsprotokoll.html",
+        "behebungsprotokoll.css",
+        "BehebungsprotokollHelper.js",
+        "pdf.header",
+        "pdf.footer",
+        "hf-mock.js",
+        "translation.json",
+        "stages.json",
+        "excelMappingFields.json"
+    ],
+    "flags": {
+        "FormDev.PDFDebug": true,
+        "Form.New": true,
+        "Form.Delete": true,
+        "Form.Copy": true,
+        "Form.ReturnToGroup": true,
+        "Form.CopySubmitted": false,
+        "Form.View": true,
+        "Feature.Picture": true,
+        "Feature.Sketch": false,
+        "Feature.CustomSketchTemplate": false,
+        "Feature.Audio": false,
+        "Feature.Map": true,
+        "Feature.Document": true,
+        "Form.LazyLoading": false,
+        "Feature.showDetail": true,
+        "PDF": true,
+        "PDF.Picture": true,
+        "PDF.Sketch": false,
+        "PDF.Audio": false,
+        "PDF.Map": true,
+        "PDF.Document": true,
+        "PDF.PageCounter": true,
+        "Picture.ReadOnly": false,
+        "Sketch.ReadOnly": false,
+        "Audio.ReadOnly": false,
+        "Map.ReadOnly": false,
+        "Document.ReadOnly": false,
+        "Listpage.SortGroupFilter": true,
+        "Form.ListPageFavorites": true,
+        "Form.ScanSearch": false
+    },
+    "catalogs": {
+        "useProxy": false,
+        "useOdataProxy": false
+    }
+}

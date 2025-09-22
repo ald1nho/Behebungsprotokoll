@@ -1,0 +1,11 @@
+[
+    {"ID": "H", "Name": "Hochwasser"},
+    {"ID": "E", "Name": "Erdrutsch"},
+    {"ID": "V", "Name": "Vermurung"},
+    {"ID": "L", "Name": "Lawinen"},
+    {"ID": "B", "Name": "Erdbeben"},
+    {"ID": "S", "Name": "Schneedruck"},
+    {"ID": "O", "Name": "Orkan"},
+    {"ID": "Bst", "Name": "Bergsturz"},
+    {"ID": "HG", "Name": "Hagel"}
+]

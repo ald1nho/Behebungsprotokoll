@@ -1,0 +1,560 @@
+/* Behebungsprotokoll - Custom Styles */
+/* Basiert auf HybridForms-CustomStylingGuide.md und testForm.css */
+/* WICHTIG (Guide):
+   - Styles form-spezifisch scopen (Klasse am <form>)
+   - HybridForms Grid NICHT überschreiben
+   - Controls füllen Zellen, keine fixen Breiten außerhalb von Scopes
+*/
+
+/* Form-spezifische Anpassungen */
+.behebungsprotokoll-form { 
+    width: 100%;
+    /* Farbige Labels gemäß Styling-Guide */
+    --label-bg: var(--formpage-color-primary-light);
+    --label-bg-required: var(--formpage-color-primary-bg);
+    --label-textcolor: var(--color-light);
+}
+
+/* Control-spezifische Styling (falls notwendig) */
+.behebungsprotokoll-form .hf-textfield,
+.behebungsprotokoll-form .hf-combobox,
+.behebungsprotokoll-form .hf-numericfield,
+.behebungsprotokoll-form .hf-datetimepicker,
+.behebungsprotokoll-form .hf-checkbox {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* Input styling um sicherzustellen dass Controls die volle Breite nutzen */
+.behebungsprotokoll-form input[data-win-control],
+.behebungsprotokoll-form div[data-win-control],
+.behebungsprotokoll-form input[data-hf-control],
+.behebungsprotokoll-form div[data-hf-control] {
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* ComboBox-spezifische Anpassungen */
+.behebungsprotokoll-form .get-row-combo > .hf-combobox {
+    width: 100% !important;
+    float: none;
+}
+
+/* Template-Variable ausblenden */
+.behebungsprotokoll-form var[data-hf-name] {
+    display: none !important;
+}
+
+/* Grundlegende Form-Styles */
+.behebungsprotokoll-form {
+    font-family: var(--font-stack);
+}
+
+.behebungsprotokoll-form .container {
+    max-width: none; /* allow full width */
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+}
+
+/* Header Styling */
+.behebungsprotokoll-form h1, 
+.behebungsprotokoll-form h2, 
+.behebungsprotokoll-form h3 {
+    color: var(--color-primary);
+    margin-bottom: 15px;
+}
+
+/* Field spacing innerhalb der Grid-Struktur - EXCLUDE template blocks to preserve responsive behavior */
+.behebungsprotokoll-form .grid > div {
+    margin-bottom: 10px;
+}
+
+/* Override: Remove margin for template grid children that need responsive behavior */
+.behebungsprotokoll-form div[data-hf-template] .grid > div {
+    margin-bottom: 0 !important;
+}
+
+/* Button styling */
+.behebungsprotokoll-form button {
+    min-height: 44px;
+    padding: 8px 16px;
+    background-color: var(--color-primary);
+    color: var(--textcolor-inverted);
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.behebungsprotokoll-form button:hover {
+    background-color: var(--color-primary-dark);
+}
+
+/* Specific styling for add-row buttons */
+.behebungsprotokoll-form #add_eigenleistung,
+.behebungsprotokoll-form #add_fremdleistung {
+    background-color: #24ab24 !important;
+    color: white !important;
+    border: 1px solid #1e8b1e !important;
+    margin-bottom: 24px; /* extra space to next row, slightly increased */
+}
+
+.behebungsprotokoll-form #add_eigenleistung:hover,
+.behebungsprotokoll-form #add_fremdleistung:hover {
+    background-color: #1e8b1e !important;
+    border-color: #166b16 !important;
+    color: white !important;
+}
+
+.behebungsprotokoll-form #add_eigenleistung:focus,
+.behebungsprotokoll-form #add_fremdleistung:focus {
+    outline: 2px solid #24ab24 !important;
+    outline-offset: 1px;
+}
+
+/* Additional override for form framework specificity */
+form.behebungsprotokoll-form button#add_eigenleistung,
+form.behebungsprotokoll-form button#add_fremdleistung {
+    background-color: #24ab24 !important;
+    color: white !important;
+    border: 1px solid #1e8b1e !important;
+}
+
+form.behebungsprotokoll-form button#add_eigenleistung:hover,
+form.behebungsprotokoll-form button#add_fremdleistung:hover {
+    background-color: #1e8b1e !important;
+    border-color: #166b16 !important;
+}
+
+/* Signatur-Bereich */
+.behebungsprotokoll-form .signature-section {
+    background: var(--control-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin: 20px 0;
+    text-align: center;
+}
+
+/* Photo gallery */
+.behebungsprotokoll-form .photo-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.behebungsprotokoll-form .photo-item {
+    background: var(--control-bg);
+    border: 1px solid var(--control-bordercolor);
+    border-radius: var(--border-radius);
+    padding: 10px;
+    text-align: center;
+}
+
+.behebungsprotokoll-form .photo-item img {
+    max-width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 2px;
+}
+
+/* Checkbox styling */
+.behebungsprotokoll-form .checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.behebungsprotokoll-form .checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: normal;
+}
+
+.behebungsprotokoll-form .checkbox-group input[type="checkbox"] {
+    width: auto !important;
+    flex: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .behebungsprotokoll-form .container {
+        padding: 10px;
+    }
+    
+    .behebungsprotokoll-form h1, 
+    .behebungsprotokoll-form h2, 
+    .behebungsprotokoll-form h3 {
+        font-size: smaller;
+    }
+}
+
+/* Touch optimization */
+@media (hover: none) {
+    .behebungsprotokoll-form input, 
+    .behebungsprotokoll-form select, 
+    .behebungsprotokoll-form button {
+        min-height: 44px;
+    }
+}
+
+/* ------------------------------------------------------
+   Full-width page overrides (scoped to this form)
+   Try widening HybridForms wrappers only when this form is present.
+   Uses :has() — if unsupported, these rules are ignored gracefully.
+   ------------------------------------------------------ */
+@supports selector(:has(*)) {
+  .hf-formpage:has(form.behebungsprotokoll-form) .sheet,
+  .hf-formpage:has(form.behebungsprotokoll-form) .main-content,
+  .hf-formpage:has(form.behebungsprotokoll-form) .content,
+  .hf-formpage:has(form.behebungsprotokoll-form) .tab > .col-md-12 {
+    max-width: none !important;
+    width: 100% !important;
+  }
+}
+
+/* ------------------------------------------------------
+   Eigenleistungen: Minimal CSS following Demo_Field_Service pattern
+   ------------------------------------------------------ */
+/* Reset ALL overrides for eigenleistungen to allow HybridForms native behavior */
+.behebungsprotokoll-form #eigenleistungen-block1 * {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    display: initial !important;
+    float: none !important;
+    box-sizing: content-box !important;
+    margin: 0 !important;
+    padding: initial !important;
+}
+
+/* Re-apply only essential HybridForms control styles */
+.behebungsprotokoll-form #eigenleistungen-block1 input,
+.behebungsprotokoll-form #eigenleistungen-block1 select {
+    padding: 8px 12px;
+    min-height: 42px;
+    box-sizing: border-box !important;
+    width: 100% !important; /* Only for input/select elements */
+}
+
+/* Copy exact pattern from Demo_Field_Service for get-row-combo */
+.behebungsprotokoll-form #eigenleistungen-block1 .get-row-combo > .hf-textfield,
+.behebungsprotokoll-form #eigenleistungen-block1 .get-row-combo > .hf-numericfield,
+.behebungsprotokoll-form #eigenleistungen-block1 .get-row-combo > .hf-dropdownlist {
+    width: 100% !important;
+    float: none !important;
+}
+
+/* Fremdleistungen column sizing */
+.behebungsprotokoll-form .fremd-row .col-bezeichnung { min-width: 200px; flex: 3 1 280px; }
+.behebungsprotokoll-form .fremd-row .col-rechnung { min-width: 180px; flex: 2 1 220px; }
+.behebungsprotokoll-form .fremd-row .col-summe { min-width: 140px; flex: 1 0 160px; }
+
+@media (max-width: 920px) {
+    .behebungsprotokoll-form .eigen-row,
+    .behebungsprotokoll-form .fremd-row {
+        flex-wrap: wrap;
+    }
+}
+
+/* ------------------------------------------------------------------
+   Scoped overrides for Page "Grunddaten" (two blocks: #block-grunddaten-1/-2)
+   - Layout the two blocks side-by-side as columns
+   - Make controls fill their cells and neutralize demo helper styles
+   ------------------------------------------------------------------ */
+
+/* Place the two Grunddaten blocks next to each other */
+.behebungsprotokoll-form #tab-grunddaten > a[href="#block-grunddaten-1"] + a[href="#block-grunddaten-2"] ~ #block-grunddaten-1,
+.behebungsprotokoll-form #tab-grunddaten > a[href="#block-grunddaten-1"] + a[href="#block-grunddaten-2"] ~ #block-grunddaten-2 {
+    display: inline-block;
+    vertical-align: top;
+    /* Guide: spacing via CSS variables, fallback to 16px */
+    --grunddaten-gap: var(--grid-gap, 16px);
+    width: calc(50% - (var(--grunddaten-gap) / 2));
+}
+
+/* Add horizontal gap between the two blocks */
+.behebungsprotokoll-form #tab-grunddaten > a[href="#block-grunddaten-1"] + a[href="#block-grunddaten-2"] ~ #block-grunddaten-2 { margin-inline-start: var(--grunddaten-gap); }
+
+/* Stack on narrow screens */
+@media (max-width: 900px) {
+    .behebungsprotokoll-form #tab-grunddaten > a[href="#block-grunddaten-1"] + a[href="#block-grunddaten-2"] ~ #block-grunddaten-1,
+    .behebungsprotokoll-form #tab-grunddaten > a[href="#block-grunddaten-1"] + a[href="#block-grunddaten-2"] ~ #block-grunddaten-2 {
+        display: block;
+        width: 100%;
+        margin-inline-start: 0;
+    }
+}
+
+/* Make controls fill the whole grid cell */
+.behebungsprotokoll-form #block-grunddaten-1 input[data-win-control],
+.behebungsprotokoll-form #block-grunddaten-1 div[data-win-control],
+.behebungsprotokoll-form #block-grunddaten-1 input[data-hf-control],
+.behebungsprotokoll-form #block-grunddaten-1 div[data-hf-control],
+.behebungsprotokoll-form #block-grunddaten-1 .hf-textfield,
+.behebungsprotokoll-form #block-grunddaten-1 .hf-combobox,
+.behebungsprotokoll-form #block-grunddaten-1 .hf-numericfield,
+.behebungsprotokoll-form #block-grunddaten-1 .hf-datetimepicker,
+.behebungsprotokoll-form #block-grunddaten-2 input[data-win-control],
+.behebungsprotokoll-form #block-grunddaten-2 div[data-win-control],
+.behebungsprotokoll-form #block-grunddaten-2 input[data-hf-control],
+.behebungsprotokoll-form #block-grunddaten-2 div[data-hf-control],
+.behebungsprotokoll-form #block-grunddaten-2 .hf-textfield,
+.behebungsprotokoll-form #block-grunddaten-2 .hf-combobox,
+.behebungsprotokoll-form #block-grunddaten-2 .hf-numericfield,
+.behebungsprotokoll-form #block-grunddaten-2 .hf-datetimepicker {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+}
+
+/* ---------------------------------------------
+   Row and label spacing inside HF blocks
+   - Keep grid intact; only add vertical rhythm
+   --------------------------------------------- */
+.behebungsprotokoll-form [data-hf-block] {
+    --row-gap: 12px;
+    --label-gap: 6px;
+}
+.behebungsprotokoll-form [data-hf-block] [data-hf-row] {
+    margin-block-end: var(--row-gap);
+}
+.behebungsprotokoll-form [data-hf-block] [data-hf-row]:last-child {
+    margin-block-end: 0;
+}
+.behebungsprotokoll-form [data-hf-block] label {
+    display: block;
+    margin-block-end: var(--label-gap);
+    font-weight: 600;
+}
+
+/* Neutralize hard-coded label widths from demo styles inside these blocks */
+.behebungsprotokoll-form #block-grunddaten-1 .label-fix > div,
+.behebungsprotokoll-form #block-grunddaten-2 .label-fix > div {
+    width: auto !important;
+    max-width: 100% !important;
+    display: block !important;
+}
+
+/* Ensure combobox helpers don't float and use full width */
+.behebungsprotokoll-form #block-grunddaten-1 .get-row-combo > .hf-combobox,
+.behebungsprotokoll-form #block-grunddaten-1 .get-location-row > .hf-textfield,
+.behebungsprotokoll-form #block-grunddaten-2 .get-row-combo > .hf-combobox,
+.behebungsprotokoll-form #block-grunddaten-2 .get-location-row > .hf-textfield {
+    float: none !important;
+    width: 100% !important;
+}
+
+/* Small tweak: make sure grid children don't have unexpected inline widths - ONLY for Grunddaten blocks */
+.behebungsprotokoll-form #block-grunddaten-1 .grid > div,
+.behebungsprotokoll-form #block-grunddaten-2 .grid > div {
+    width: 100% !important;
+}
+
+/* IMPORTANT: Exclude template blocks from width override to preserve HybridForms responsive behavior */
+.behebungsprotokoll-form div[data-hf-template] .grid > div {
+    width: auto !important;
+}
+
+/* -----------------------------
+   Leistungen: Tabellen-Styling
+   ----------------------------- */
+/* Removed: legacy container IDs no longer used */
+
+/* Fremdleistungen: Flex-Layout für Eingabereihen */
+/* Removed: legacy list selectors */
+
+/* Listen-Header für beide Bereiche */
+/* Removed: legacy list headers */
+
+/* Removed */
+
+/* Eigenleistungen: Flex-Layout für Eingabereihen */
+/* Removed */
+
+/* Artikel-Nummer (col-index) für alle Zeilen - zentriert ausrichten */
+/* Removed */
+
+/* Erste Zeile: Index-Spalte mit Label wie Controls - removed empty rule */
+/* Index-Spalte: Standard-Ausrichtung wie Controls */
+/* Removed */
+
+/* Index-Feld (disabled/readonly) ausgrauen – für alle Zeilen (erste und dynamische) */
+/* Keep generic disabled look for index fields */
+.behebungsprotokoll-form input[id*="eigenleistung_index"] {
+    background-color: #f5f5f5 !important;
+    color: var(--textcolor) !important;
+    cursor: default !important;
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+/* Fallback: Falls HF den disabled-State nicht als Attribut setzt */
+/* Removed */
+
+/* Anzeige-Summe (Eigenleistungen) ausgrauen + non-interactive, auch bei displayOnly */
+/* Keep sum fields non-interactive if disabled */
+.behebungsprotokoll-form input[id*="eigenleistung_summe"] {
+    background-color: #f5f5f5 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+/* Spezifisches Styling für Index-Felder aller Zeilen */
+/* Removed */
+
+/* Ultra-spezifische Regeln für dynamisch hinzugefügte Index-Felder */
+.behebungsprotokoll-form input#eigenleistung_index_2,
+.behebungsprotokoll-form input#eigenleistung_index_3,
+.behebungsprotokoll-form input#eigenleistung_index_4,
+.behebungsprotokoll-form input#eigenleistung_index_5,
+.behebungsprotokoll-form input#fremdleistung_index_2,
+.behebungsprotokoll-form input#fremdleistung_index_3,
+.behebungsprotokoll-form input#fremdleistung_index_4,
+.behebungsprotokoll-form input#fremdleistung_index_5 {
+    background-color: #f5f5f5 !important;
+    color: var(--textcolor) !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+/* HybridForms Wrapper Override für Index-Felder */
+.behebungsprotokoll-form #eigenleistungen_list .hf-textfield input[id^="eigenleistung_index_"],
+.behebungsprotokoll-form #fremdleistungen_list .hf-textfield input[id^="fremdleistung_index_"],
+.behebungsprotokoll-form .hf-textfield input[id*="index_"] {
+    background-color: #f5f5f5 !important;
+    color: var(--textcolor) !important;
+    cursor: not-allowed !important;
+}
+
+/* Summe-Spalte mit Button - korrekte Ausrichtung */
+/* Removed */
+
+/* Spezielle Ausrichtung für erste Zeile - Summe-Container soll nicht nach unten rutschen */
+/* remove first-row special casing to keep rows identical */
+
+/* Styling für gesperrte Summe-Felder */
+/* Removed */
+
+/* Konsistentes Padding für alle Eingabefelder in beiden Bereichen */
+.behebungsprotokoll-form #eigenleistungen-block1 input,
+.behebungsprotokoll-form #eigenleistungen-block1 select,
+.behebungsprotokoll-form .fremd-row input,
+.behebungsprotokoll-form .fremd-row select {
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* Zusätzliche Sicherheit: padding direkt über IDs der Felder (falls Control Wrapper greift) */
+.behebungsprotokoll-form input[id^="eigenleistung_"],
+.behebungsprotokoll-form select[id^="eigenleistung_"],
+.behebungsprotokoll-form input[id^="fremdleistung_"],
+.behebungsprotokoll-form select[id^="fremdleistung_"] {
+    padding: 8px 12px !important;
+    text-indent: 0 !important;
+}
+
+/* Einheitliche Höhe für alle Eingabefelder */
+.behebungsprotokoll-form #eigenleistungen-block1 input,
+.behebungsprotokoll-form #eigenleistungen-block1 select,
+.behebungsprotokoll-form .fremd-row input,
+.behebungsprotokoll-form .fremd-row select {
+    min-height: 42px !important;
+    line-height: normal !important;
+}
+
+/* NumericField: konsistentes Padding auch bei Kendo/HF Wrappern */
+.behebungsprotokoll-form .hf-numericfield input,
+.behebungsprotokoll-form .hf-numericfield .k-input-inner,
+.behebungsprotokoll-form .hf-numericfield .k-input,
+.behebungsprotokoll-form .hf-numericfield .k-textbox,
+.behebungsprotokoll-form .hf-numericfield .k-numerictextbox input {
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* Fallback: number-Inputs in den Listen angleichen */
+.behebungsprotokoll-form #eigenleistungen-block1 input[type="number"],
+.behebungsprotokoll-form .fremd-row input[type="number"] {
+    padding: 8px 12px !important;
+}
+
+/* DropDownList / generische Kendo-Inputs: inneres Padding angleichen */
+.behebungsprotokoll-form #eigenleistungen-block1 .k-input-inner,
+.behebungsprotokoll-form .fremd-row .k-input-inner,
+.behebungsprotokoll-form #eigenleistungen-block1 .k-dropdownlist .k-input-inner,
+.behebungsprotokoll-form .fremd-row .k-dropdownlist .k-input-inner {
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+    text-indent: 0 !important;
+}
+
+/* remove all first-row overrides to ensure identical sizing across rows */
+
+
+.behebungsprotokoll-form .hf-table,
+.behebungsprotokoll-form .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--view-bg);
+    border: 1px solid var(--control-bordercolor);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+.behebungsprotokoll-form .hf-table thead th,
+.behebungsprotokoll-form .data-table thead th {
+    background: var(--label-bg);
+    color: var(--label-textcolor);
+    text-align: left;
+    padding: 8px 10px;
+    font-weight: 600;
+}
+.behebungsprotokoll-form .hf-table td,
+.behebungsprotokoll-form .data-table td {
+    padding: 8px 10px;
+    border-top: 1px solid var(--control-bordercolor);
+}
+.behebungsprotokoll-form .hf-table input,
+.behebungsprotokoll-form .hf-table select,
+.behebungsprotokoll-form .data-table input,
+.behebungsprotokoll-form .data-table select {
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* Calculation + Summary rows */
+.behebungsprotokoll-form .calculation-section .calc-row,
+.behebungsprotokoll-form .summary-table .summary-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+}
+.behebungsprotokoll-form .calculation-section label,
+.behebungsprotokoll-form .summary-table label {
+    min-width: 220px;
+    font-weight: 600;
+}
+.behebungsprotokoll-form .summary-table .total {
+    border-top: 2px solid var(--control-bordercolor);
+    padding-top: 8px;
+}
+
+/* Force full-width for WinJS TextField wrappers of Gemeinde & Straße */
+.behebungsprotokoll-form #block-grunddaten-1 input#gemeinde[data-win-control="HFWinJSCtrl.TextField"] + .hf-textfield,
+.behebungsprotokoll-form #block-grunddaten-1 input#gemeinde[data-win-control="HFWinJSCtrl.TextField"] ~ .hf-textfield,
+.behebungsprotokoll-form #block-grunddaten-2 input#strasse[data-win-control="HFWinJSCtrl.TextField"] + .hf-textfield,
+.behebungsprotokoll-form #block-grunddaten-2 input#strasse[data-win-control="HFWinJSCtrl.TextField"] ~ .hf-textfield {
+    width: 100% !important;
+    max-width: none !important;
+    display: block !important;
+}
+.behebungsprotokoll-form #block-grunddaten-1 input#gemeinde[data-win-control="HFWinJSCtrl.TextField"] + .hf-textfield input,
+.behebungsprotokoll-form #block-grunddaten-1 input#gemeinde[data-win-control="HFWinJSCtrl.TextField"] ~ .hf-textfield input,
+.behebungsprotokoll-form #block-grunddaten-2 input#strasse[data-win-control="HFWinJSCtrl.TextField"] + .hf-textfield input,
+.behebungsprotokoll-form #block-grunddaten-2 input#strasse[data-win-control="HFWinJSCtrl.TextField"] ~ .hf-textfield input {
+    width: 100% !important;
+}
