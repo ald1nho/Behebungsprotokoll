@@ -142,48 +142,6 @@ var HFFormdefinition;
         function roundToTwo(value) {
             return Math.round((value + Number.EPSILON) * 100) / 100;
         }
-        function configureGermanFormatting() {
-            debugLog('=== Konfiguriere deutsche Zahlenformatierung ===');
-            try {
-                // Finde alle NumericField Controls und konfiguriere sie (nur Eigenleistungen)
-                var numericFields = [
-                    'eigenleistung_menge', 'eigenleistung_ep'
-                ];
-
-                // Konfiguriere vorhandene Felder
-                numericFields.forEach(function(baseId) {
-                    var suffixes = getExistingSuffixes(baseId);
-                    suffixes.forEach(function(suffix) {
-                        var fieldId = baseId + suffix;
-                        var ctrl = getControl(fieldId);
-                        if (ctrl && typeof ctrl.setKendoOptions === 'function') {
-                            ctrl.setKendoOptions({
-                                culture: 'de-DE',
-                                decimals: 2,
-                                format: 'n2'
-                            });
-                            debugLog("Deutsche Formatierung gesetzt für: " + fieldId);
-                        }
-                    });
-                });
-
-                // Konfiguriere auch die ersten Felder (ohne Suffix)
-                numericFields.forEach(function(baseId) {
-                    var ctrl = getControl(baseId);
-                    if (ctrl && typeof ctrl.setKendoOptions === 'function') {
-                        ctrl.setKendoOptions({
-                            culture: 'de-DE',
-                            decimals: 2,
-                            format: 'n2'
-                        });
-                        debugLog("Deutsche Formatierung gesetzt für: " + baseId);
-                    }
-                });
-            }
-            catch (error) {
-                debugLog('Fehler bei der Formatierungskonfiguration:', error);
-            }
-        }
         function getExistingSuffixes(baseIdPrefix) {
             var suffixes = [];
             var selector = "[id^=\"".concat(baseIdPrefix, "_hfrepeating_\"]");
@@ -313,6 +271,48 @@ var HFFormdefinition;
             calculateFremdleistungen();
         }
         BehebungsprotokollHelper.calculateFremdleistungTotalRepeatable = calculateFremdleistungTotalRepeatable;
+        function configureGermanFormatting() {
+            debugLog('=== Konfiguriere deutsche Zahlenformatierung ===');
+            try {
+                // Finde alle NumericField Controls und konfiguriere sie (nur Eigenleistungen)
+                var numericFields = [
+                    'eigenleistung_menge', 'eigenleistung_ep'
+                ];
+
+                // Konfiguriere vorhandene Felder
+                numericFields.forEach(function(baseId) {
+                    var suffixes = getExistingSuffixes(baseId);
+                    suffixes.forEach(function(suffix) {
+                        var fieldId = baseId + suffix;
+                        var ctrl = getControl(fieldId);
+                        if (ctrl && typeof ctrl.setKendoOptions === 'function') {
+                            ctrl.setKendoOptions({
+                                culture: 'de-DE',
+                                decimals: 2,
+                                format: 'n2'
+                            });
+                            debugLog("Deutsche Formatierung gesetzt für: " + fieldId);
+                        }
+                    });
+                });
+
+                // Konfiguriere auch die ersten Felder (ohne Suffix)
+                numericFields.forEach(function(baseId) {
+                    var ctrl = getControl(baseId);
+                    if (ctrl && typeof ctrl.setKendoOptions === 'function') {
+                        ctrl.setKendoOptions({
+                            culture: 'de-DE',
+                            decimals: 2,
+                            format: 'n2'
+                        });
+                        debugLog("Deutsche Formatierung gesetzt für: " + baseId);
+                    }
+                });
+            }
+            catch (error) {
+                debugLog('Fehler bei der Formatierungskonfiguration:', error);
+            }
+        }
         function onEigenleistungAdded() {
             debugLog('Eigenleistung hinzugefügt');
             setTimeout(function () {
@@ -381,9 +381,33 @@ var HFFormdefinition;
                             api.RepeatingUnits.addEventListener(FREMDLEISTUNG_REPEATING_ID, 'removed', onFremdleistungRemoved);
                             debugLog('Event Handler registriert');
                         }
+                        function bindDOMEvents(suffix) {
+                            ['eigenleistung_menge', 'eigenleistung_ep'].forEach(function (baseId) {
+                                var id = "".concat(baseId).concat(suffix);
+                                var element = document.getElementById(id);
+                                if (element) {
+                                    debugLog("Registriere DOM Event Listener f\u00FCr ".concat(id));
+                                    element.removeEventListener('input', calculateEigenleistungRowRepeatable);
+                                    element.removeEventListener('change', calculateEigenleistungRowRepeatable);
+                                    element.addEventListener('input', calculateEigenleistungRowRepeatable);
+                                    element.addEventListener('change', calculateEigenleistungRowRepeatable);
+                                    debugLog("DOM Event Listener f\u00FCr ".concat(id, " registriert"));
+                                }
+                            });
+                            var fremdId = "fremdleistung_summe".concat(suffix);
+                            var fremdElement = document.getElementById(fremdId);
+                            if (fremdElement) {
+                                debugLog("Registriere DOM Event Listener f\u00FCr ".concat(fremdId));
+                                fremdElement.removeEventListener('input', calculateFremdleistungTotalRepeatable);
+                                fremdElement.removeEventListener('change', calculateFremdleistungTotalRepeatable);
+                                fremdElement.addEventListener('input', calculateFremdleistungTotalRepeatable);
+                                fremdElement.addEventListener('change', calculateFremdleistungTotalRepeatable);
+                                debugLog("DOM Event Listener f\u00FCr ".concat(fremdId, " registriert"));
+                            }
+                        }
                         getExistingSuffixes('eigenleistung_menge')
                             .filter(function (suffix) { return !suffix.includes('-kendoInput'); })
-                            .forEach(bindDOMEventsForSuffix);
+                            .forEach(bindDOMEvents);
                         if ((_b = api.Page) === null || _b === void 0 ? void 0 : _b.addEventListener) {
                             var refreshAll = function () {
                                 debugLog('Page refresh - berechne alle Werte');
@@ -396,19 +420,16 @@ var HFFormdefinition;
                         }
                         setTimeout(function () {
                             debugLog('Erste Berechnung nach 500ms');
-                            configureGermanFormatting();
                             calculateEigenleistungen();
                             calculateFremdleistungen();
                         }, 500);
                         setTimeout(function () {
                             debugLog('Zweite Berechnung nach 2000ms');
-                            configureGermanFormatting();
                             calculateEigenleistungen();
                             calculateFremdleistungen();
                         }, 2000);
                         setTimeout(function () {
                             debugLog('Dritte Berechnung nach 5000ms');
-                            configureGermanFormatting();
                             calculateEigenleistungen();
                             calculateFremdleistungen();
                         }, 5000);
