@@ -1,502 +1,450 @@
-var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
-    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-        if (ar || !(i in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-            ar[i] = from[i];
-        }
-    }
-    return to.concat(ar || Array.prototype.slice.call(from));
-};
 var HFFormdefinition;
 (function (HFFormdefinition) {
     var BehebungsprotokollHelper;
     (function (BehebungsprotokollHelper) {
-        var BerechnungsManager = (function () {
-            function BerechnungsManager() {
-            }
-            BerechnungsManager.prototype.calculateGrandTotal = function () {
-                var eigenleistungInput = document.getElementById('summe_eigenleistungen');
-                var fremdleistungInput = document.getElementById('summe_fremdleistungen_brutto');
-                var eigenleistung = eigenleistungInput
-                    ? ((isFinite(eigenleistungInput.valueAsNumber) ? eigenleistungInput.valueAsNumber : parseFloat(eigenleistungInput.value.replace(',', '.'))) || 0)
-                    : 0;
-                var fremdleistung = fremdleistungInput
-                    ? ((isFinite(fremdleistungInput.valueAsNumber) ? fremdleistungInput.valueAsNumber : parseFloat(fremdleistungInput.value.replace(',', '.'))) || 0)
-                    : 0;
-                var gesamt = eigenleistung + fremdleistung;
-                var summaryEigenleistungInput = document.getElementById('summary_eigenleistung');
-                var summaryFremdleistungInput = document.getElementById('summary_fremdleistung');
-                var summaryGesamtInput = document.getElementById('summary_gesamt');
-                if (summaryEigenleistungInput)
-                    summaryEigenleistungInput.value = eigenleistung.toFixed(2);
-                if (summaryFremdleistungInput)
-                    summaryFremdleistungInput.value = fremdleistung.toFixed(2);
-                if (summaryGesamtInput)
-                    summaryGesamtInput.value = gesamt.toFixed(2);
-                var fotosCheckbox = document.getElementById('beilage_fotos');
-                if (fotosCheckbox && gesamt >= 1500) {
-                    fotosCheckbox.checked = true;
-                }
-            };
-            return BerechnungsManager;
-        }());
-        BehebungsprotokollHelper.BerechnungsManager = BerechnungsManager;
-        var berechnungsManager = new BerechnungsManager();
-        function getHybridForms() {
-            var globalObj = window;
-            return globalObj && globalObj.HybridForms ? globalObj.HybridForms : null;
+        var EIGENLEISTUNG_REPEATING_ID = 'tab_eigenleistungen';
+        var FREMDLEISTUNG_REPEATING_ID = 'tab_fremdleistungen';
+        var MWST_RATE = 0.2;
+        function debugLog(message, data) {
+            console.log("[BehebungsprotokollHelper] ".concat(message), data || '');
         }
-        function getHybridFormsAPI() {
-            var hf = getHybridForms();
-            return hf && hf.API ? hf.API : null;
+        function isHybridFormsAvailable() {
+            var _a;
+            return !!((_a = window.HybridForms) === null || _a === void 0 ? void 0 : _a.API);
         }
-        function parseDecimal(value) {
-            if (value === null || value === undefined) {
-                return 0;
-            }
-            if (typeof value === 'number' && isFinite(value)) {
-                return value;
-            }
-            var normalized = String(value).replace(/\s+/g, '').replace(/,/g, '.');
-            var parsed = parseFloat(normalized);
-            return isNaN(parsed) ? 0 : parsed;
+        function getAPI() {
+            var _a;
+            return (_a = window.HybridForms) === null || _a === void 0 ? void 0 : _a.API;
         }
-        function formatCurrency(value) {
-            if (!isFinite(value)) {
-                return '0.00';
-            }
-            return value.toFixed(2);
-        }
-        function normalizeFieldId(rawId) {
-            if (!rawId) {
-                return '';
-            }
-            return rawId.replace(/^hf-formcontrol-/i, '');
-        }
-        function getFieldElement(fieldId) {
-            if (!fieldId) {
+        function getControl(id) {
+            var _a, _b;
+            if (!isHybridFormsAvailable()) {
+                debugLog("HybridForms API nicht verf\u00FCgbar f\u00FCr Control: ".concat(id));
                 return null;
             }
-            var direct = document.getElementById(fieldId);
-            if (direct) {
-                return direct;
+            try {
+                var api = getAPI();
+                var ctrl = (_b = (_a = api.FormControls) === null || _a === void 0 ? void 0 : _a.getCtrl) === null || _b === void 0 ? void 0 : _b.call(_a, id);
+                if (!ctrl) {
+                    debugLog("Control nicht gefunden: ".concat(id));
+                }
+                return ctrl;
             }
-            return document.querySelector("[data-hf-id=\"".concat(fieldId, "\"]"));
+            catch (error) {
+                debugLog("Fehler beim Holen des Controls ".concat(id, ":"), error);
+                return null;
+            }
         }
-        function extractFieldIdFromElement(element) {
-            if (!element) {
-                return '';
+        function setControlValue(id, value) {
+            var element = document.getElementById(id);
+            if (element) {
+                if (element instanceof HTMLInputElement && element.type === 'checkbox') {
+                    element.checked = Boolean(value);
+                }
+                else {
+                    element.value = String(value);
+                }
+                debugLog("DOM-Wert gesetzt f\u00FCr ".concat(id, ": ").concat(value));
             }
-            var candidates = [
-                (element.dataset && element.dataset.hfId) || undefined,
-                (element.dataset && element.dataset.hfFieldId) || undefined,
-                element.getAttribute ? element.getAttribute('data-hf-id') || undefined : undefined,
-                element.id || undefined,
-            ];
-            for (var _i = 0, candidates_1 = candidates; _i < candidates_1.length; _i++) {
-                var candidate = candidates_1[_i];
-                var normalized = normalizeFieldId(candidate);
-                if (normalized) {
-                    return normalized;
+            var ctrl = getControl(id);
+            if (ctrl && typeof ctrl.val === 'function') {
+                try {
+                    ctrl.val(value, true);
+                    debugLog("API-Wert gesetzt f\u00FCr ".concat(id, ": ").concat(value));
+                }
+                catch (error) {
+                    debugLog("Fehler beim Setzen des API-Werts f\u00FCr ".concat(id, ":"), error);
                 }
             }
-            var nested = element.querySelector('[data-hf-id], input[id]');
-            if (nested) {
-                return extractFieldIdFromElement(nested);
+        }
+        function getControlValue(id) {
+            var element = document.getElementById(id);
+            if (element) {
+                var value = element instanceof HTMLInputElement && element.type === 'checkbox' ? element.checked : element.value;
+                if (value !== null && value !== undefined && value !== '') {
+                    debugLog("DOM-Wert f\u00FCr ".concat(id, ": ").concat(value));
+                    return value;
+                }
             }
+            var ctrl = getControl(id);
+            if (ctrl && typeof ctrl.val === 'function') {
+                try {
+                    var value = ctrl.val();
+                    debugLog("API-Wert f\u00FCr ".concat(id, ": ").concat(value));
+                    return value;
+                }
+                catch (error) {
+                    debugLog("Fehler beim Holen des API-Werts f\u00FCr ".concat(id, ":"), error);
+                }
+            }
+            debugLog("Kein Wert gefunden f\u00FCr ".concat(id));
             return '';
         }
-        function extractSuffixFromFieldId(fieldId, baseId) {
-            if (!fieldId) {
-                return '';
+        function getRepeatingCount(repeatingId) {
+            var _a, _b;
+            if (!isHybridFormsAvailable()) {
+                debugLog("HybridForms API nicht verf\u00FCgbar f\u00FCr Repeating Count: ".concat(repeatingId));
+                return 0;
             }
-            var normalized = normalizeFieldId(fieldId);
-            var regex = new RegExp("^".concat(baseId.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), "(.*)$"), 'i');
-            var match = normalized.match(regex);
-            return match ? match[1] : '';
+            try {
+                var api = getAPI();
+                var count = ((_b = (_a = api.RepeatingUnits) === null || _a === void 0 ? void 0 : _a.count) === null || _b === void 0 ? void 0 : _b.call(_a, repeatingId)) || 0;
+                debugLog("Repeating Count f\u00FCr ".concat(repeatingId, ": ").concat(count));
+                return count;
+            }
+            catch (error) {
+                debugLog("Fehler beim Holen der Repeating Count f\u00FCr ".concat(repeatingId, ":"), error);
+                return 0;
+            }
         }
-        function fieldExists(fieldId) {
-            var _a;
-            var api = getHybridFormsAPI();
-            if ((_a = api === null || api === void 0 ? void 0 : api.Fields) === null || _a === void 0 ? void 0 : _a.getById) {
-                var field = api.Fields.getById(fieldId);
-                if (field) {
-                    return true;
+        function parseNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return 0;
+            }
+            if (typeof value === 'number') {
+                return isFinite(value) ? value : 0;
+            }
+            if (typeof value === 'string') {
+                // Deutsche Formatierung: Tausenderpunkt entfernen, Dezimalkomma zu Punkt
+                var cleaned = value.replace(/[^\d.,-]/g, '');
+
+                // Unterscheide deutsche und englische Formatierung
+                if (cleaned.includes(',')) {
+                    // Deutsche Formatierung: 1.234,56 -> 1234.56
+                    var lastComma = cleaned.lastIndexOf(',');
+                    var lastDot = cleaned.lastIndexOf('.');
+
+                    if (lastComma > lastDot) {
+                        // Komma ist Dezimaltrennzeichen, Punkte sind Tausendertrennzeichen
+                        cleaned = cleaned.substring(0, lastComma).replace(/\./g, '') + '.' + cleaned.substring(lastComma + 1);
+                    } else {
+                        // Punkt ist Dezimaltrennzeichen, Kommas ersetzen
+                        cleaned = cleaned.replace(/,/g, '');
+                    }
                 }
-            }
-            if (document.getElementById(fieldId)) {
-                return true;
-            }
-            return !!document.querySelector("[data-hf-id=\"".concat(fieldId, "\"]"));
-        }
-        function getFieldValue(fieldId) {
-            var _a;
-            var api = getHybridFormsAPI();
-            if ((_a = api === null || api === void 0 ? void 0 : api.Fields) === null || _a === void 0 ? void 0 : _a.getById) {
-                var field = api.Fields.getById(fieldId);
-                if (field && field.value !== undefined && field.value !== null) {
-                    return parseDecimal(field.value);
-                }
-            }
-            var element = getFieldElement(fieldId);
-            if (element) {
-                return parseDecimal(element.value || element.getAttribute('value'));
+
+                var parsed = parseFloat(cleaned);
+                return isNaN(parsed) ? 0 : parsed;
             }
             return 0;
         }
-        function setFieldValue(fieldId, value) {
-            var _a;
-            var api = getHybridFormsAPI();
-            if ((_a = api === null || api === void 0 ? void 0 : api.Fields) === null || _a === void 0 ? void 0 : _a.setField) {
-                try {
-                    api.Fields.setField(fieldId, value);
-                }
-                catch (err) {
-                }
+        function formatAmount(value) {
+            if (!isFinite(value)) {
+                return '0,00';
             }
-            var element = getFieldElement(fieldId);
-            if (element) {
-                element.value = value;
-                element.setAttribute('value', value);
-            }
+            // Deutsche Formatierung: Tausenderpunkt, Dezimalkomma
+            var formatted = value.toFixed(2);
+            var parts = formatted.split('.');
+            var integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            var decimalPart = parts[1];
+            return integerPart + ',' + decimalPart;
         }
-        function collectFieldElements(baseId) {
-            var selectors = [
-                "[data-hf-id^=\"".concat(baseId, "\" i]"),
-                "input[id^=\"".concat(baseId, "\" i]")
-            ];
-            var elements = [];
-            var seen = new Set();
-            selectors.forEach(function (selector) {
-                document.querySelectorAll(selector).forEach(function (element) {
-                    var fieldId = extractFieldIdFromElement(element);
-                    if (!fieldId || seen.has(fieldId)) {
-                        return;
+        function roundToTwo(value) {
+            return Math.round((value + Number.EPSILON) * 100) / 100;
+        }
+        function configureGermanFormatting() {
+            debugLog('=== Konfiguriere deutsche Zahlenformatierung ===');
+            try {
+                // Finde alle NumericField Controls und konfiguriere sie (nur Eigenleistungen)
+                var numericFields = [
+                    'eigenleistung_menge', 'eigenleistung_ep'
+                ];
+
+                // Konfiguriere vorhandene Felder
+                numericFields.forEach(function(baseId) {
+                    var suffixes = getExistingSuffixes(baseId);
+                    suffixes.forEach(function(suffix) {
+                        var fieldId = baseId + suffix;
+                        var ctrl = getControl(fieldId);
+                        if (ctrl && typeof ctrl.setKendoOptions === 'function') {
+                            ctrl.setKendoOptions({
+                                culture: 'de-DE',
+                                decimals: 2,
+                                format: 'n2'
+                            });
+                            debugLog("Deutsche Formatierung gesetzt für: " + fieldId);
+                        }
+                    });
+                });
+
+                // Konfiguriere auch die ersten Felder (ohne Suffix)
+                numericFields.forEach(function(baseId) {
+                    var ctrl = getControl(baseId);
+                    if (ctrl && typeof ctrl.setKendoOptions === 'function') {
+                        ctrl.setKendoOptions({
+                            culture: 'de-DE',
+                            decimals: 2,
+                            format: 'n2'
+                        });
+                        debugLog("Deutsche Formatierung gesetzt für: " + baseId);
                     }
-                    seen.add(fieldId);
-                    elements.push(element);
-                });
-            });
-            return elements;
-        }
-        var cachedEigenleistungRows = [];
-        var pendingAddIndex = null;
-        var pendingRemoveIndex = null;
-        var cachedFremdleistungRows = [];
-        var pendingFremdAddIndex = null;
-        var pendingFremdRemoveIndex = null;
-        function captureEigenleistungRows() {
-            var mengeElements = collectFieldElements('eigenleistung_menge');
-            var epElements = collectFieldElements('eigenleistung_ep');
-            var sumElements = collectFieldElements('eigenleistung_summe');
-            var rowCount = Math.max(mengeElements.length, epElements.length, sumElements.length);
-            var rows = [];
-            for (var i = 0; i < rowCount; i++) {
-                var mengeEl = mengeElements[i];
-                var epEl = epElements[i];
-                var sumEl = sumElements[i];
-                rows.push({
-                    menge: mengeEl ? (mengeEl.value || mengeEl.getAttribute('value') || '') : '',
-                    ep: epEl ? (epEl.value || epEl.getAttribute('value') || '') : '',
-                    sum: sumEl ? (sumEl.value || sumEl.getAttribute('value') || '0.00') : '0.00'
                 });
             }
-            return rows;
-        }
-        function applyEigenleistungRows(rows) {
-            var _a, _b, _c;
-            var mengeElements = collectFieldElements('eigenleistung_menge');
-            var epElements = collectFieldElements('eigenleistung_ep');
-            var sumElements = collectFieldElements('eigenleistung_summe');
-            var rowCount = Math.min(rows.length, mengeElements.length, epElements.length, sumElements.length);
-            for (var i = 0; i < rowCount; i++) {
-                var row = rows[i];
-                var mengeId = extractFieldIdFromElement(mengeElements[i]);
-                if (mengeId) {
-                    setFieldValue(mengeId, (_a = row.menge) !== null && _a !== void 0 ? _a : '');
-                }
-                var epId = extractFieldIdFromElement(epElements[i]);
-                if (epId) {
-                    setFieldValue(epId, (_b = row.ep) !== null && _b !== void 0 ? _b : '');
-                }
-                var sumId = extractFieldIdFromElement(sumElements[i]);
-                if (sumId) {
-                    setFieldValue(sumId, (_c = row.sum) !== null && _c !== void 0 ? _c : '0.00');
-                }
-            }
-            updateEigenleistungTotal();
-        }
-        function captureFremdleistungRows() {
-            var bezeichnungElements = collectFieldElements('fremdleistung_bezeichnung');
-            var rechnungElements = collectFieldElements('fremdleistung_rechnung');
-            var sumElements = collectFieldElements('fremdleistung_summe');
-            var rowCount = Math.max(bezeichnungElements.length, rechnungElements.length, sumElements.length);
-            var rows = [];
-            for (var i = 0; i < rowCount; i++) {
-                var bezEl = bezeichnungElements[i];
-                var rechEl = rechnungElements[i];
-                var sumEl = sumElements[i];
-                rows.push({
-                    bezeichnung: bezEl ? (bezEl.value || bezEl.getAttribute('value') || '') : '',
-                    rechnung: rechEl ? (rechEl.value || rechEl.getAttribute('value') || '') : '',
-                    sum: sumEl ? (sumEl.value || sumEl.getAttribute('value') || '0.00') : '0.00'
-                });
-            }
-            return rows;
-        }
-        function applyFremdleistungRows(rows) {
-            var _a, _b, _c;
-            var bezeichnungElements = collectFieldElements('fremdleistung_bezeichnung');
-            var rechnungElements = collectFieldElements('fremdleistung_rechnung');
-            var sumElements = collectFieldElements('fremdleistung_summe');
-            var rowCount = Math.min(rows.length, bezeichnungElements.length, rechnungElements.length, sumElements.length);
-            for (var i = 0; i < rowCount; i++) {
-                var row = rows[i];
-                var bezId = extractFieldIdFromElement(bezeichnungElements[i]);
-                if (bezId) {
-                    setFieldValue(bezId, (_a = row.bezeichnung) !== null && _a !== void 0 ? _a : '');
-                }
-                var rechId = extractFieldIdFromElement(rechnungElements[i]);
-                if (rechId) {
-                    setFieldValue(rechId, (_b = row.rechnung) !== null && _b !== void 0 ? _b : '');
-                }
-                var sumId = extractFieldIdFromElement(sumElements[i]);
-                if (sumId) {
-                    setFieldValue(sumId, (_c = row.sum) !== null && _c !== void 0 ? _c : '0.00');
-                }
+            catch (error) {
+                debugLog('Fehler bei der Formatierungskonfiguration:', error);
             }
         }
-        function recalculateEigenleistungen() {
-            var _a;
-            var api = getHybridFormsAPI();
+        function getExistingSuffixes(baseIdPrefix) {
             var suffixes = [];
-            var repeatingId = 'tab_eigenleistungen';
-            if (fieldExists('eigenleistung_menge') || fieldExists('eigenleistung_ep')) {
-                suffixes.push('');
-            }
-            var repeatingCount = 0;
-            if ((_a = api === null || api === void 0 ? void 0 : api.RepeatingUnits) === null || _a === void 0 ? void 0 : _a.count) {
-                try {
-                    repeatingCount = api.RepeatingUnits.count(repeatingId) || 0;
+            var selector = "[id^=\"".concat(baseIdPrefix, "_hfrepeating_\"]");
+            var nodes = document.querySelectorAll(selector);
+            nodes.forEach(function (node) {
+                if (!(node instanceof HTMLElement) || !node.id) {
+                    return;
                 }
-                catch (err) {
-                    repeatingCount = 0;
+                var id = node.id;
+                if (id.endsWith('-kendoInput')) {
+                    return;
                 }
-            }
-            if (repeatingCount <= 0 && !suffixes.length) {
-                repeatingCount = 1;
-            }
-            for (var idx = 1; idx <= repeatingCount; idx++) {
-                var suffix = "_hfrepeating_".concat(idx);
-                if (fieldExists("eigenleistung_menge".concat(suffix))
-                    || fieldExists("eigenleistung_ep".concat(suffix))
-                    || fieldExists("eigenleistung_summe".concat(suffix))) {
+                var suffix = id.substring(baseIdPrefix.length);
+                if (suffix && !suffixes.includes(suffix)) {
                     suffixes.push(suffix);
                 }
-            }
-            suffixes.forEach(function (suffix) {
-                var amountId = "eigenleistung_menge".concat(suffix);
-                var epId = "eigenleistung_ep".concat(suffix);
-                var sumId = "eigenleistung_summe".concat(suffix);
-                if (!fieldExists(amountId) && !fieldExists(epId)) {
-                    return;
-                }
-                var menge = getFieldValue(amountId);
-                var einzelpreis = getFieldValue(epId);
-                var summe = menge * einzelpreis;
-                if (fieldExists(sumId)) {
-                    setFieldValue(sumId, formatCurrency(summe));
-                }
             });
-            updateEigenleistungTotal();
+            suffixes.sort(function (a, b) {
+                var numA = parseInt(a.replace(/[^0-9]/g, ''), 10) || 0;
+                var numB = parseInt(b.replace(/[^0-9]/g, ''), 10) || 0;
+                return numA - numB;
+            });
+            debugLog("Gefundene Suffixe f\u00FCr ".concat(baseIdPrefix, ": ").concat(JSON.stringify(suffixes)));
+            return suffixes;
         }
-        function registerRepeatingUnitEvents() {
-            var _a, _b;
-            var api = getHybridFormsAPI();
-            var repeatingId = 'tab_eigenleistungen';
-            var repeatingFremdId = 'tab_fremdleistungen';
-            var scheduleApply = function (rows) {
-                window.requestAnimationFrame(function () {
-                    applyEigenleistungRows(rows);
-                    recalculateEigenleistungen();
+        function calculateEigenleistungen() {
+            debugLog('=== Berechne Eigenleistungen ===');
+            try {
+                var suffixes = getExistingSuffixes('eigenleistung_menge');
+                debugLog("Anzahl Eigenleistungen: ".concat(suffixes.length));
+                var total_1 = 0;
+                suffixes.forEach(function (suffix, idx) {
+                    var mengeId = "eigenleistung_menge".concat(suffix);
+                    var epId = "eigenleistung_ep".concat(suffix);
+                    var summeId = "eigenleistung_summe".concat(suffix);
+                    var indexId = "eigenleistung_index".concat(suffix);
+                    var menge = parseNumber(getControlValue(mengeId));
+                    var ep = parseNumber(getControlValue(epId));
+                    var summe = roundToTwo(menge * ep);
+                    debugLog("Zeile ".concat(idx + 1, " (").concat(suffix, "): Menge=").concat(menge, ", EP=").concat(ep, ", Summe=").concat(summe));
+                    setControlValue(summeId, formatAmount(summe));
+                    setControlValue(indexId, String(idx + 1));
+                    total_1 += summe;
                 });
-            };
-            var scheduleFremdApply = function (rows) {
-                window.requestAnimationFrame(function () {
-                    applyFremdleistungRows(rows);
-                    scheduleFremdleistungUpdate();
-                });
-            };
-            if ((_a = api === null || api === void 0 ? void 0 : api.RepeatingUnits) === null || _a === void 0 ? void 0 : _a.addEventListener) {
-                api.RepeatingUnits.addEventListener(repeatingId, 'beforeadd', function (index) {
-                    cachedEigenleistungRows = captureEigenleistungRows();
-                    pendingAddIndex = index;
-                });
-                api.RepeatingUnits.addEventListener(repeatingId, 'beforeremove', function (index) {
-                    cachedEigenleistungRows = captureEigenleistungRows();
-                    pendingRemoveIndex = index;
-                });
-                api.RepeatingUnits.addEventListener(repeatingId, 'added', function (index) {
-                    var _a;
-                    var rows = cachedEigenleistungRows.length ? __spreadArray([], cachedEigenleistungRows, true) : captureEigenleistungRows();
-                    var insertIndex = (_a = index !== null && index !== void 0 ? index : pendingAddIndex) !== null && _a !== void 0 ? _a : rows.length;
-                    var safeIndex = Math.max(0, Math.min(insertIndex, rows.length));
-                    rows.splice(safeIndex, 0, { menge: '', ep: '', sum: '0.00' });
-                    cachedEigenleistungRows = [];
-                    pendingAddIndex = null;
-                    scheduleApply(rows);
-                });
-                api.RepeatingUnits.addEventListener(repeatingId, 'removed', function (index) {
-                    var _a;
-                    var rows = cachedEigenleistungRows.length ? __spreadArray([], cachedEigenleistungRows, true) : captureEigenleistungRows();
-                    var removeIndex = (_a = index !== null && index !== void 0 ? index : pendingRemoveIndex) !== null && _a !== void 0 ? _a : -1;
-                    if (removeIndex >= 0 && removeIndex < rows.length) {
-                        rows.splice(removeIndex, 1);
-                    }
-                    cachedEigenleistungRows = [];
-                    pendingRemoveIndex = null;
-                    scheduleApply(rows);
-                });
-                api.RepeatingUnits.addEventListener(repeatingFremdId, 'beforeadd', function (index) {
-                    cachedFremdleistungRows = captureFremdleistungRows();
-                    pendingFremdAddIndex = index;
-                });
-                api.RepeatingUnits.addEventListener(repeatingFremdId, 'beforeremove', function (index) {
-                    cachedFremdleistungRows = captureFremdleistungRows();
-                    pendingFremdRemoveIndex = index;
-                });
-                api.RepeatingUnits.addEventListener(repeatingFremdId, 'added', function (index) {
-                    var _a;
-                    var rows = cachedFremdleistungRows.length ? __spreadArray([], cachedFremdleistungRows, true) : captureFremdleistungRows();
-                    var insertIndex = (_a = index !== null && index !== void 0 ? index : pendingFremdAddIndex) !== null && _a !== void 0 ? _a : rows.length;
-                    var safeIndex = Math.max(0, Math.min(insertIndex, rows.length));
-                    rows.splice(safeIndex, 0, { bezeichnung: '', rechnung: '', sum: '0.00' });
-                    cachedFremdleistungRows = [];
-                    pendingFremdAddIndex = null;
-                    scheduleFremdApply(rows);
-                });
-                api.RepeatingUnits.addEventListener(repeatingFremdId, 'removed', function (index) {
-                    var _a;
-                    var rows = cachedFremdleistungRows.length ? __spreadArray([], cachedFremdleistungRows, true) : captureFremdleistungRows();
-                    var removeIndex = (_a = index !== null && index !== void 0 ? index : pendingFremdRemoveIndex) !== null && _a !== void 0 ? _a : -1;
-                    if (removeIndex >= 0 && removeIndex < rows.length) {
-                        rows.splice(removeIndex, 1);
-                    }
-                    cachedFremdleistungRows = [];
-                    pendingFremdRemoveIndex = null;
-                    scheduleFremdApply(rows);
-                });
+                var totalFormatted = formatAmount(total_1);
+                debugLog("Eigenleistungen Total: ".concat(totalFormatted));
+                setControlValue('summe_eigenleistungen', totalFormatted);
+                setControlValue('summary_eigenleistung', totalFormatted);
+                calculateGrandTotal();
             }
-            if ((_b = api === null || api === void 0 ? void 0 : api.Page) === null || _b === void 0 ? void 0 : _b.addEventListener) {
-                api.Page.addEventListener('rendered', function () { return window.requestAnimationFrame(function () { return recalculateEigenleistungen(); }); });
-                api.Page.addEventListener('viewrendered', function () { return window.requestAnimationFrame(function () { return recalculateEigenleistungen(); }); });
+            catch (error) {
+                debugLog('Fehler bei Eigenleistungsberechnung:', error);
             }
         }
-        function updateEigenleistungTotal() {
-            var inputs = Array.from(document.querySelectorAll('[data-hf-id^="eigenleistung_summe" i], input[id^="eigenleistung_summe" i]'));
-            var total = 0;
-            inputs.forEach(function (input) {
-                total += parseDecimal(input.value || input.getAttribute('value'));
-            });
-            var totalFormatted = formatCurrency(total);
-            setFieldValue('summe_eigenleistungen', totalFormatted);
-            berechnungsManager.calculateGrandTotal();
+        function calculateFremdleistungen() {
+            debugLog('=== Berechne Fremdleistungen ===');
+            try {
+                var suffixes = getExistingSuffixes('fremdleistung_summe');
+                debugLog("Anzahl Fremdleistungen: ".concat(suffixes.length));
+                var netto_1 = 0;
+                suffixes.forEach(function (suffix, idx) {
+                    var summeId = "fremdleistung_summe".concat(suffix);
+                    var indexId = "fremdleistung_index".concat(suffix);
+                    var summe = parseNumber(getControlValue(summeId));
+                    debugLog("Zeile ".concat(idx + 1, " (").concat(suffix, "): Summe=").concat(summe));
+                    setControlValue(indexId, String(idx + 1));
+                    netto_1 += summe;
+                });
+                var nettoRounded = roundToTwo(netto_1);
+                var mwst = roundToTwo(nettoRounded * MWST_RATE);
+                var brutto = roundToTwo(nettoRounded + mwst);
+                debugLog("Fremdleistungen: Netto=".concat(nettoRounded, ", MwSt=").concat(mwst, ", Brutto=").concat(brutto));
+                setControlValue('summe_fremdleistungen_netto', formatAmount(nettoRounded));
+                setControlValue('mwst_fremdleistungen', formatAmount(mwst));
+                setControlValue('summe_fremdleistungen_brutto', formatAmount(brutto));
+                setControlValue('summary_fremdleistung', formatAmount(brutto));
+                calculateGrandTotal();
+            }
+            catch (error) {
+                debugLog('Fehler bei Fremdleistungsberechnung:', error);
+            }
+        }
+        function calculateGrandTotal() {
+            debugLog('=== Berechne Gesamtsumme ===');
+            try {
+                var eigenTotal = parseNumber(getControlValue('summary_eigenleistung'));
+                var fremdTotal = parseNumber(getControlValue('summary_fremdleistung'));
+                var grandTotal = roundToTwo(eigenTotal + fremdTotal);
+                debugLog("Gesamtsumme: Eigen=".concat(eigenTotal, " + Fremd=").concat(fremdTotal, " = ").concat(grandTotal));
+                setControlValue('summary_gesamt', formatAmount(grandTotal));
+                if (grandTotal >= 1500) {
+                    setControlValue('beilage_fotos', true);
+                    debugLog('Fotos-Checkbox aktiviert (>= 1500€)');
+                }
+            }
+            catch (error) {
+                debugLog('Fehler bei Gesamtsummenberechnung:', error);
+            }
         }
         function calculateEigenleistungRowRepeatable(value, ctrl) {
-            recalculateEigenleistungen();
+            debugLog('calculateEigenleistungRowRepeatable aufgerufen', { value: value, ctrl: ctrl });
+
+            // Formatiere den eingegebenen Wert sofort mit deutscher Formatierung
+            if (ctrl && typeof ctrl.val === 'function' && value !== null && value !== undefined && value !== '') {
+                var numericValue = parseNumber(value);
+                if (numericValue !== 0 || value === 0 || value === '0') {
+                    setTimeout(function() {
+                        var formattedValue = formatAmount(numericValue);
+                        debugLog('Formatiere Eigenleistung von ' + value + ' zu ' + formattedValue);
+                        ctrl.val(formattedValue, true); // true = disable onChanged to prevent loop
+
+                        // Zusätzlich: DOM Element direkt setzen als Backup
+                        var element = ctrl.element;
+                        if (element && element.length > 0) {
+                            element.val(formattedValue);
+                            debugLog('DOM Backup gesetzt für Eigenleistung: ' + formattedValue);
+                        }
+                    }, 50);
+                }
+            }
+
+            calculateEigenleistungen();
         }
         BehebungsprotokollHelper.calculateEigenleistungRowRepeatable = calculateEigenleistungRowRepeatable;
-        var eigenleistungUpdateQueued = false;
-        var fremdleistungUpdateQueued = false;
-        function updateEigenleistungIndices() {
-            eigenleistungUpdateQueued = false;
-            var indexInputs = collectFieldElements('eigenleistung_index');
-            if (!indexInputs.length) {
-                return;
-            }
-            indexInputs.forEach(function (input, idx) {
-                var newValue = String(idx + 1);
-                var fieldId = extractFieldIdFromElement(input);
-                if (!fieldId) {
-                    return;
-                }
-                if (input.value !== newValue) {
-                    input.value = newValue;
-                    input.setAttribute('value', newValue);
-                }
-                setFieldValue(fieldId, newValue);
-            });
-            recalculateEigenleistungen();
+        function calculateFremdleistungTotalRepeatable(value, ctrl) {
+            debugLog('calculateFremdleistungTotalRepeatable aufgerufen', { value: value, ctrl: ctrl });
+            calculateFremdleistungen();
         }
-        function scheduleEigenleistungUpdate() {
-            if (eigenleistungUpdateQueued) {
-                return;
-            }
-            eigenleistungUpdateQueued = true;
-            window.requestAnimationFrame(updateEigenleistungIndices);
-        }
-        function updateFremdleistungIndices() {
-            fremdleistungUpdateQueued = false;
-            var indexInputs = collectFieldElements('fremdleistung_index');
-            if (!indexInputs.length) {
-                return;
-            }
-            indexInputs.forEach(function (input, idx) {
-                var newValue = String(idx + 1);
-                var fieldId = extractFieldIdFromElement(input);
-                if (!fieldId) {
-                    return;
+        BehebungsprotokollHelper.calculateFremdleistungTotalRepeatable = calculateFremdleistungTotalRepeatable;
+        function onEigenleistungAdded() {
+            debugLog('Eigenleistung hinzugefügt');
+            setTimeout(function () {
+                var suffixes = getExistingSuffixes('eigenleistung_menge');
+                var latestSuffix = suffixes[suffixes.length - 1];
+                if (latestSuffix && !latestSuffix.includes('-kendoInput')) {
+                    bindDOMEventsForSuffix(latestSuffix);
                 }
-                if (input.value !== newValue) {
-                    input.value = newValue;
-                    input.setAttribute('value', newValue);
+                configureGermanFormatting();
+                calculateEigenleistungen();
+            }, 100);
+        }
+        function onEigenleistungRemoved() {
+            debugLog('Eigenleistung entfernt');
+            setTimeout(calculateEigenleistungen, 100);
+        }
+        function onFremdleistungAdded() {
+            debugLog('Fremdleistung hinzugefügt');
+            setTimeout(function () {
+                var suffixes = getExistingSuffixes('fremdleistung_summe');
+                var latestSuffix = suffixes[suffixes.length - 1];
+                if (latestSuffix && !latestSuffix.includes('-kendoInput')) {
+                    bindDOMEventsForSuffix(latestSuffix);
                 }
-                setFieldValue(fieldId, newValue);
-            });
+                calculateFremdleistungen();
+            }, 100);
         }
-        function scheduleFremdleistungUpdate() {
-            if (fremdleistungUpdateQueued) {
-                return;
-            }
-            fremdleistungUpdateQueued = true;
-            window.requestAnimationFrame(updateFremdleistungIndices);
+        function onFremdleistungRemoved() {
+            debugLog('Fremdleistung entfernt');
+            setTimeout(calculateFremdleistungen, 100);
         }
-        function observeEigenleistungen() {
-            scheduleEigenleistungUpdate();
-            scheduleFremdleistungUpdate();
-            var observer = new MutationObserver(function (mutations) {
-                for (var _i = 0, mutations_1 = mutations; _i < mutations_1.length; _i++) {
-                    var mutation = mutations_1[_i];
-                    if (mutation.type !== 'childList') {
-                        continue;
-                    }
-                    var addedRelevant = Array.from(mutation.addedNodes).some(function (node) {
-                        return node instanceof HTMLElement && !!node.querySelector('input[id^="eigenleistung_index" i], input[id^="fremdleistung_index" i]');
-                    });
-                    var removedRelevant = Array.from(mutation.removedNodes).some(function (node) {
-                        return node instanceof HTMLElement && !!node.querySelector('input[id^="eigenleistung_index" i], input[id^="fremdleistung_index" i]');
-                    });
-                    if (addedRelevant || removedRelevant) {
-                        scheduleEigenleistungUpdate();
-                        scheduleFremdleistungUpdate();
-                        return;
-                    }
+        function bindDOMEventsForSuffix(suffix) {
+            ['eigenleistung_menge', 'eigenleistung_ep'].forEach(function (baseId) {
+                var id = "".concat(baseId).concat(suffix);
+                var element = document.getElementById(id);
+                if (element) {
+                    debugLog("Registriere DOM Event Listener f\u00FCr neue Zeile ".concat(id));
+                    element.removeEventListener('input', calculateEigenleistungRowRepeatable);
+                    element.removeEventListener('change', calculateEigenleistungRowRepeatable);
+                    element.addEventListener('input', calculateEigenleistungRowRepeatable);
+                    element.addEventListener('change', calculateEigenleistungRowRepeatable);
                 }
             });
-            observer.observe(document.body, { childList: true, subtree: true });
+            var fremdId = "fremdleistung_summe".concat(suffix);
+            var fremdElement = document.getElementById(fremdId);
+            if (fremdElement) {
+                debugLog("Registriere DOM Event Listener f\u00FCr neue Zeile ".concat(fremdId));
+                fremdElement.removeEventListener('input', calculateFremdleistungTotalRepeatable);
+                fremdElement.removeEventListener('change', calculateFremdleistungTotalRepeatable);
+                fremdElement.addEventListener('input', calculateFremdleistungTotalRepeatable);
+                fremdElement.addEventListener('change', calculateFremdleistungTotalRepeatable);
+            }
         }
         function initialize() {
-            registerRepeatingUnitEvents();
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', observeEigenleistungen, { once: true });
-            }
-            else {
-                observeEigenleistungen();
-            }
+            debugLog('=== Initialisierung BehebungsprotokollHelper ===');
+            var checkAPI = function () {
+                var _a, _b;
+                if (isHybridFormsAvailable()) {
+                    debugLog('HybridForms API verfügbar, registriere Event Handler');
+                    try {
+                        var api = getAPI();
+                        if ((_a = api.RepeatingUnits) === null || _a === void 0 ? void 0 : _a.addEventListener) {
+                            api.RepeatingUnits.addEventListener(EIGENLEISTUNG_REPEATING_ID, 'added', onEigenleistungAdded);
+                            api.RepeatingUnits.addEventListener(EIGENLEISTUNG_REPEATING_ID, 'removed', onEigenleistungRemoved);
+                            api.RepeatingUnits.addEventListener(FREMDLEISTUNG_REPEATING_ID, 'added', onFremdleistungAdded);
+                            api.RepeatingUnits.addEventListener(FREMDLEISTUNG_REPEATING_ID, 'removed', onFremdleistungRemoved);
+                            debugLog('Event Handler registriert');
+                        }
+                        getExistingSuffixes('eigenleistung_menge')
+                            .filter(function (suffix) { return !suffix.includes('-kendoInput'); })
+                            .forEach(bindDOMEventsForSuffix);
+                        if ((_b = api.Page) === null || _b === void 0 ? void 0 : _b.addEventListener) {
+                            var refreshAll = function () {
+                                debugLog('Page refresh - berechne alle Werte');
+                                calculateEigenleistungen();
+                                calculateFremdleistungen();
+                            };
+                            api.Page.addEventListener('rendered', refreshAll);
+                            api.Page.addEventListener('viewrendered', refreshAll);
+                            debugLog('Page refresh Handler registriert');
+                        }
+                        setTimeout(function () {
+                            debugLog('Erste Berechnung nach 500ms');
+                            configureGermanFormatting();
+                            calculateEigenleistungen();
+                            calculateFremdleistungen();
+                        }, 500);
+                        setTimeout(function () {
+                            debugLog('Zweite Berechnung nach 2000ms');
+                            configureGermanFormatting();
+                            calculateEigenleistungen();
+                            calculateFremdleistungen();
+                        }, 2000);
+                        setTimeout(function () {
+                            debugLog('Dritte Berechnung nach 5000ms');
+                            configureGermanFormatting();
+                            calculateEigenleistungen();
+                            calculateFremdleistungen();
+                        }, 5000);
+                    }
+                    catch (error) {
+                        debugLog('Fehler bei der Initialisierung:', error);
+                    }
+                }
+                else {
+                    debugLog('HybridForms API noch nicht verfügbar, versuche erneut in 100ms');
+                    setTimeout(checkAPI, 100);
+                }
+            };
+            checkAPI();
         }
-        initialize();
-        if (typeof WinJS !== 'undefined' && WinJS.Utilities && WinJS.Utilities.markSupportedForProcessing) {
-            WinJS.Utilities.markSupportedForProcessing(HFFormdefinition.BehebungsprotokollHelper.calculateEigenleistungRowRepeatable);
+        function exposeToGlobal() {
+            debugLog('Expose Funktionen zu globalem Namespace');
+            var globalObj = window;
+            if (!globalObj.HFFormdefinition) {
+                globalObj.HFFormdefinition = {};
+            }
+            if (!globalObj.HFFormdefinition.BehebungsprotokollHelper) {
+                globalObj.HFFormdefinition.BehebungsprotokollHelper = {};
+            }
+            globalObj.HFFormdefinition.BehebungsprotokollHelper.calculateEigenleistungRowRepeatable = calculateEigenleistungRowRepeatable;
+            globalObj.HFFormdefinition.BehebungsprotokollHelper.calculateFremdleistungTotalRepeatable = calculateFremdleistungTotalRepeatable;
+            globalObj.HFFormdefinition.BehebungsprotokollHelper.configureGermanFormatting = configureGermanFormatting;
+            debugLog('Funktionen erfolgreich exponiert');
         }
+        exposeToGlobal();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initialize);
+        }
+        else {
+            initialize();
+        }
+        setTimeout(initialize, 1000);
     })(BehebungsprotokollHelper = HFFormdefinition.BehebungsprotokollHelper || (HFFormdefinition.BehebungsprotokollHelper = {}));
 })(HFFormdefinition || (HFFormdefinition = {}));

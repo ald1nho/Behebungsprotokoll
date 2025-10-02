@@ -1,577 +1,512 @@
-// Behebungsprotokoll TypeScript Helper - Einfache funktionierende Version
-
 namespace HFFormdefinition.BehebungsprotokollHelper {
-    // Global Calculation Manager
-    export class BerechnungsManager {
-        constructor() {
-            // Initialisierung
-        }
+    const EIGENLEISTUNG_REPEATING_ID = 'tab_eigenleistungen';
+    const FREMDLEISTUNG_REPEATING_ID = 'tab_fremdleistungen';
+    const MWST_RATE = 0.2;
 
-        public calculateGrandTotal(): void {
-            const eigenleistungInput = document.getElementById('summe_eigenleistungen') as HTMLInputElement;
-            const fremdleistungInput = document.getElementById('summe_fremdleistungen_brutto') as HTMLInputElement;
-            
-            const eigenleistung = eigenleistungInput
-                ? ((isFinite(eigenleistungInput.valueAsNumber) ? eigenleistungInput.valueAsNumber : parseFloat(eigenleistungInput.value.replace(',', '.'))) || 0)
-                : 0;
-            const fremdleistung = fremdleistungInput
-                ? ((isFinite(fremdleistungInput.valueAsNumber) ? fremdleistungInput.valueAsNumber : parseFloat(fremdleistungInput.value.replace(',', '.'))) || 0)
-                : 0;
-            const gesamt = eigenleistung + fremdleistung;
-            
-            const summaryEigenleistungInput = document.getElementById('summary_eigenleistung') as HTMLInputElement;
-            const summaryFremdleistungInput = document.getElementById('summary_fremdleistung') as HTMLInputElement;
-            const summaryGesamtInput = document.getElementById('summary_gesamt') as HTMLInputElement;
-            
-            if (summaryEigenleistungInput) summaryEigenleistungInput.value = eigenleistung.toFixed(2);
-            if (summaryFremdleistungInput) summaryFremdleistungInput.value = fremdleistung.toFixed(2);
-            if (summaryGesamtInput) summaryGesamtInput.value = gesamt.toFixed(2);
-            
-            // Auto-check fotos if >= 1500
-            const fotosCheckbox = document.getElementById('beilage_fotos') as HTMLInputElement;
-            if (fotosCheckbox && gesamt >= 1500) {
-                fotosCheckbox.checked = true;
-            }
-        }
+    // Debug-Funktion um zu prüfen ob alles verfügbar ist
+    function debugLog(message: string, data?: any): void {
+        console.log(`[BehebungsprotokollHelper] ${message}`, data || '');
     }
 
-    const berechnungsManager = new BerechnungsManager();
-
-    function getHybridForms(): any | null {
-        const globalObj = window as unknown as { HybridForms?: any };
-        return globalObj && globalObj.HybridForms ? globalObj.HybridForms : null;
+    // Prüfe ob HybridForms API verfügbar ist
+    function isHybridFormsAvailable(): boolean {
+        return !!(window as any).HybridForms?.API;
     }
 
-    function getHybridFormsAPI(): any | null {
-        const hf = getHybridForms();
-        return hf && hf.API ? hf.API : null;
+    // Hole HybridForms API
+    function getAPI(): any {
+        return (window as any).HybridForms?.API;
     }
 
-    function parseDecimal(value: string | number | null | undefined): number {
-        if (value === null || value === undefined) {
-            return 0;
-        }
-        if (typeof value === 'number' && isFinite(value)) {
-            return value;
-        }
-        const normalized = String(value).replace(/\s+/g, '').replace(/,/g, '.');
-        const parsed = parseFloat(normalized);
-        return isNaN(parsed) ? 0 : parsed;
-    }
-
-    function formatCurrency(value: number): string {
-        if (!isFinite(value)) {
-            return '0.00';
-        }
-        return value.toFixed(2);
-    }
-
-    function normalizeFieldId(rawId: string | null | undefined): string {
-        if (!rawId) {
-            return '';
-        }
-        return rawId.replace(/^hf-formcontrol-/i, '');
-    }
-
-    function getFieldElement(fieldId: string): HTMLInputElement | null {
-        if (!fieldId) {
+    // Hole Control über HybridForms API
+    function getControl(id: string): any {
+        if (!isHybridFormsAvailable()) {
+            debugLog(`HybridForms API nicht verfügbar für Control: ${id}`);
             return null;
         }
-
-        const direct = document.getElementById(fieldId) as HTMLInputElement | null;
-        if (direct) {
-            return direct;
+        
+        try {
+            const api = getAPI();
+            const ctrl = api.FormControls?.getCtrl?.(id);
+            if (!ctrl) {
+                debugLog(`Control nicht gefunden: ${id}`);
+            }
+            return ctrl;
+        } catch (error) {
+            debugLog(`Fehler beim Holen des Controls ${id}:`, error);
+            return null;
         }
-
-        return document.querySelector<HTMLInputElement>(`[data-hf-id="${fieldId}"]`);
     }
 
-    function extractFieldIdFromElement(element: HTMLElement | null | undefined): string {
-        if (!element) {
-            return '';
+    // Setze Control-Wert über HybridForms API
+    function setControlValue(id: string, value: any): void {
+        // Priorisiere DOM-Update da API nicht zuverlässig funktioniert
+        const element = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+        if (element) {
+            if (element instanceof HTMLInputElement && element.type === 'checkbox') {
+                element.checked = Boolean(value);
+            } else {
+                element.value = String(value);
+            }
+            debugLog(`DOM-Wert gesetzt für ${id}: ${value}`);
         }
 
-        const candidates = [
-            (element.dataset && element.dataset.hfId) || undefined,
-            (element.dataset && (element.dataset as Record<string, string>).hfFieldId) || undefined,
-            element.getAttribute ? element.getAttribute('data-hf-id') || undefined : undefined,
-            element.id || undefined,
-        ];
+        // Zusätzlich: Versuche API-Update
+        const ctrl = getControl(id);
+        if (ctrl && typeof ctrl.val === 'function') {
+            try {
+                ctrl.val(value, true); // true = disableOnChanged
+                debugLog(`API-Wert gesetzt für ${id}: ${value}`);
+            } catch (error) {
+                debugLog(`Fehler beim Setzen des API-Werts für ${id}:`, error);
+            }
+        }
+    }
 
-        for (const candidate of candidates) {
-            const normalized = normalizeFieldId(candidate);
-            if (normalized) {
-                return normalized;
+    // Hole Control-Wert über HybridForms API
+    function getControlValue(id: string): any {
+        // Priorisiere DOM-Wert da API-Werte null sind
+        const element = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+        if (element) {
+            const value = element instanceof HTMLInputElement && element.type === 'checkbox' ? element.checked : element.value;
+            if (value !== null && value !== undefined && value !== '') {
+                debugLog(`DOM-Wert für ${id}: ${value}`);
+                return value;
             }
         }
 
-        const nested = element.querySelector<HTMLElement>('[data-hf-id], input[id]');
-        if (nested) {
-            return extractFieldIdFromElement(nested);
+        // Fallback: API-Wert holen
+        const ctrl = getControl(id);
+        if (ctrl && typeof ctrl.val === 'function') {
+            try {
+                const value = ctrl.val();
+                debugLog(`API-Wert für ${id}: ${value}`);
+                return value;
+            } catch (error) {
+                debugLog(`Fehler beim Holen des API-Werts für ${id}:`, error);
+            }
         }
 
+        debugLog(`Kein Wert gefunden für ${id}`);
         return '';
     }
 
-    function extractSuffixFromFieldId(fieldId: string, baseId: string): string {
-        if (!fieldId) {
-            return '';
+    // Hole Anzahl der Repeating Units
+    function getRepeatingCount(repeatingId: string): number {
+        if (!isHybridFormsAvailable()) {
+            debugLog(`HybridForms API nicht verfügbar für Repeating Count: ${repeatingId}`);
+            return 0;
         }
-        const normalized = normalizeFieldId(fieldId);
-        const regex = new RegExp(`^${baseId.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}(.*)$`, 'i');
-        const match = normalized.match(regex);
-        return match ? match[1] : '';
+        
+        try {
+            const api = getAPI();
+            const count = api.RepeatingUnits?.count?.(repeatingId) || 0;
+            debugLog(`Repeating Count für ${repeatingId}: ${count}`);
+            return count;
+        } catch (error) {
+            debugLog(`Fehler beim Holen der Repeating Count für ${repeatingId}:`, error);
+            return 0;
+        }
     }
 
-    function fieldExists(fieldId: string): boolean {
-        const api = getHybridFormsAPI();
-        if (api?.Fields?.getById) {
-            const field = api.Fields.getById(fieldId);
-            if (field) {
-                return true;
-            }
+    // Parse Zahl aus verschiedenen Formaten
+    function parseNumber(value: any): number {
+        if (value === null || value === undefined || value === '') {
+            return 0;
         }
-        if (document.getElementById(fieldId)) {
-            return true;
+        
+        if (typeof value === 'number') {
+            return isFinite(value) ? value : 0;
         }
-        return !!document.querySelector(`[data-hf-id="${fieldId}"]`);
-    }
-
-    function getFieldValue(fieldId: string): number {
-        const api = getHybridFormsAPI();
-        if (api?.Fields?.getById) {
-            const field = api.Fields.getById(fieldId);
-            if (field && field.value !== undefined && field.value !== null) {
-                return parseDecimal(field.value as string | number);
-            }
+        
+        if (typeof value === 'string') {
+            const cleaned = value.replace(/[^\d.,-]/g, '').replace(',', '.');
+            const parsed = parseFloat(cleaned);
+            return isNaN(parsed) ? 0 : parsed;
         }
-
-        const element = getFieldElement(fieldId);
-        if (element) {
-            return parseDecimal(element.value || element.getAttribute('value'));
-        }
-
+        
         return 0;
     }
 
-    function setFieldValue(fieldId: string, value: string): void {
-        const api = getHybridFormsAPI();
-        if (api?.Fields?.setField) {
-            try {
-                api.Fields.setField(fieldId, value);
-            } catch (err) {
-                // ignore when field does not exist
+    // Formatiere Betrag
+    function formatAmount(value: number): string {
+        return isFinite(value) ? value.toFixed(2) : '0.00';
+    }
+
+    // Runde auf 2 Dezimalstellen
+    function roundToTwo(value: number): number {
+        return Math.round((value + Number.EPSILON) * 100) / 100;
+    }
+
+    // Prüfe ob alle Controls verfügbar sind
+    function areControlsReady(): boolean {
+        const count = getRepeatingCount(EIGENLEISTUNG_REPEATING_ID);
+        let readyCount = 0;
+        
+        for (let i = 1; i <= count; i++) {
+            const suffix = `_hfrepeating_${i}`;
+            const mengeElement = document.getElementById(`eigenleistung_menge${suffix}`);
+            const epElement = document.getElementById(`eigenleistung_ep${suffix}`);
+            
+            if (mengeElement && epElement) {
+                readyCount++;
             }
         }
-
-        const element = getFieldElement(fieldId);
-        if (element) {
-            element.value = value;
-            element.setAttribute('value', value);
-        }
+        
+        debugLog(`Controls bereit: ${readyCount}/${count}`);
+        return readyCount === count && count > 0;
     }
 
-    function collectFieldElements(baseId: string): HTMLInputElement[] {
-        const selectors = [
-            `[data-hf-id^="${baseId}" i]`,
-            `input[id^="${baseId}" i]`
-        ];
-        const elements: HTMLInputElement[] = [];
-        const seen = new Set<string>();
-
-        selectors.forEach(selector => {
-            document.querySelectorAll<HTMLInputElement>(selector).forEach(element => {
-                const fieldId = extractFieldIdFromElement(element);
-                if (!fieldId || seen.has(fieldId)) {
-                    return;
-                }
-                seen.add(fieldId);
-                elements.push(element);
-            });
-        });
-
-        return elements;
-    }
-
-    interface EigenleistungRowData {
-        menge: string;
-        ep: string;
-        sum: string;
-    }
-
-    interface FremdleistungRowData {
-        bezeichnung: string;
-        rechnung: string;
-        sum: string;
-    }
-
-    let cachedEigenleistungRows: EigenleistungRowData[] = [];
-    let pendingAddIndex: number | null = null;
-    let pendingRemoveIndex: number | null = null;
-    let cachedFremdleistungRows: FremdleistungRowData[] = [];
-    let pendingFremdAddIndex: number | null = null;
-    let pendingFremdRemoveIndex: number | null = null;
-
-    function captureEigenleistungRows(): EigenleistungRowData[] {
-        const mengeElements = collectFieldElements('eigenleistung_menge');
-        const epElements = collectFieldElements('eigenleistung_ep');
-        const sumElements = collectFieldElements('eigenleistung_summe');
-        const rowCount = Math.max(mengeElements.length, epElements.length, sumElements.length);
-        const rows: EigenleistungRowData[] = [];
-
-        for (let i = 0; i < rowCount; i++) {
-            const mengeEl = mengeElements[i];
-            const epEl = epElements[i];
-            const sumEl = sumElements[i];
-
-            rows.push({
-                menge: mengeEl ? (mengeEl.value || mengeEl.getAttribute('value') || '') : '',
-                ep: epEl ? (epEl.value || epEl.getAttribute('value') || '') : '',
-                sum: sumEl ? (sumEl.value || sumEl.getAttribute('value') || '0.00') : '0.00'
-            });
-        }
-
-        return rows;
-    }
-
-    function applyEigenleistungRows(rows: EigenleistungRowData[]): void {
-        const mengeElements = collectFieldElements('eigenleistung_menge');
-        const epElements = collectFieldElements('eigenleistung_ep');
-        const sumElements = collectFieldElements('eigenleistung_summe');
-        const rowCount = Math.min(rows.length, mengeElements.length, epElements.length, sumElements.length);
-
-        for (let i = 0; i < rowCount; i++) {
-            const row = rows[i];
-
-            const mengeId = extractFieldIdFromElement(mengeElements[i]);
-            if (mengeId) {
-                setFieldValue(mengeId, row.menge ?? '');
-            }
-
-            const epId = extractFieldIdFromElement(epElements[i]);
-            if (epId) {
-                setFieldValue(epId, row.ep ?? '');
-            }
-
-            const sumId = extractFieldIdFromElement(sumElements[i]);
-            if (sumId) {
-                setFieldValue(sumId, row.sum ?? '0.00');
-            }
-        }
-
-        updateEigenleistungTotal();
-    }
-
-    function captureFremdleistungRows(): FremdleistungRowData[] {
-        const bezeichnungElements = collectFieldElements('fremdleistung_bezeichnung');
-        const rechnungElements = collectFieldElements('fremdleistung_rechnung');
-        const sumElements = collectFieldElements('fremdleistung_summe');
-        const rowCount = Math.max(bezeichnungElements.length, rechnungElements.length, sumElements.length);
-        const rows: FremdleistungRowData[] = [];
-
-        for (let i = 0; i < rowCount; i++) {
-            const bezEl = bezeichnungElements[i];
-            const rechEl = rechnungElements[i];
-            const sumEl = sumElements[i];
-
-            rows.push({
-                bezeichnung: bezEl ? (bezEl.value || bezEl.getAttribute('value') || '') : '',
-                rechnung: rechEl ? (rechEl.value || rechEl.getAttribute('value') || '') : '',
-                sum: sumEl ? (sumEl.value || sumEl.getAttribute('value') || '0.00') : '0.00'
-            });
-        }
-
-        return rows;
-    }
-
-    function applyFremdleistungRows(rows: FremdleistungRowData[]): void {
-        const bezeichnungElements = collectFieldElements('fremdleistung_bezeichnung');
-        const rechnungElements = collectFieldElements('fremdleistung_rechnung');
-        const sumElements = collectFieldElements('fremdleistung_summe');
-        const rowCount = Math.min(rows.length, bezeichnungElements.length, rechnungElements.length, sumElements.length);
-
-        for (let i = 0; i < rowCount; i++) {
-            const row = rows[i];
-
-            const bezId = extractFieldIdFromElement(bezeichnungElements[i]);
-            if (bezId) {
-                setFieldValue(bezId, row.bezeichnung ?? '');
-            }
-
-            const rechId = extractFieldIdFromElement(rechnungElements[i]);
-            if (rechId) {
-                setFieldValue(rechId, row.rechnung ?? '');
-            }
-
-            const sumId = extractFieldIdFromElement(sumElements[i]);
-            if (sumId) {
-                setFieldValue(sumId, row.sum ?? '0.00');
-            }
-        }
-    }
-
-    function recalculateEigenleistungen(): void {
-        const api = getHybridFormsAPI();
+    // Hole die tatsächlich vorhandenen Suffixe anhand der DOM-IDs
+    function getExistingSuffixes(baseIdPrefix: string): string[] {
         const suffixes: string[] = [];
-        const repeatingId = 'tab_eigenleistungen';
-
-        if (fieldExists('eigenleistung_menge') || fieldExists('eigenleistung_ep')) {
-            suffixes.push('');
-        }
-
-        let repeatingCount = 0;
-        if (api?.RepeatingUnits?.count) {
-            try {
-                repeatingCount = api.RepeatingUnits.count(repeatingId) || 0;
-            } catch (err) {
-                repeatingCount = 0;
+        const selector = `[id^="${baseIdPrefix}_hfrepeating_"]`;
+        const nodes = document.querySelectorAll(selector);
+        nodes.forEach(node => {
+            if (!(node instanceof HTMLElement) || !node.id) {
+                return;
             }
-        }
-
-        if (repeatingCount <= 0 && !suffixes.length) {
-            repeatingCount = 1;
-        }
-
-        for (let idx = 1; idx <= repeatingCount; idx++) {
-            const suffix = `_hfrepeating_${idx}`;
-            if (fieldExists(`eigenleistung_menge${suffix}`)
-                || fieldExists(`eigenleistung_ep${suffix}`)
-                || fieldExists(`eigenleistung_summe${suffix}`)) {
+            const id = node.id;
+            // Ignoriere Kendo UI Inputs
+            if (id.endsWith('-kendoInput')) {
+                return;
+            }
+            const suffix = id.substring(baseIdPrefix.length); // includes leading _hfrepeating_...
+            if (suffix && !suffixes.includes(suffix)) {
                 suffixes.push(suffix);
             }
+        });
+        // Stabil: nach natürlicher Reihenfolge sortieren (nach der letzten Nummer)
+        suffixes.sort((a, b) => {
+            const numA = parseInt(a.replace(/[^0-9]/g, ''), 10) || 0;
+            const numB = parseInt(b.replace(/[^0-9]/g, ''), 10) || 0;
+            return numA - numB;
+        });
+        debugLog(`Gefundene Suffixe für ${baseIdPrefix}: ${JSON.stringify(suffixes)}`);
+        return suffixes;
+    }
+
+    // Berechne Eigenleistungen
+    function calculateEigenleistungen(): void {
+        debugLog('=== Berechne Eigenleistungen ===');
+        try {
+            const suffixes = getExistingSuffixes('eigenleistung_menge');
+            debugLog(`Anzahl Eigenleistungen: ${suffixes.length}`);
+
+            let total = 0;
+            suffixes.forEach((suffix, idx) => {
+                const mengeId = `eigenleistung_menge${suffix}`;
+                const epId = `eigenleistung_ep${suffix}`;
+                const summeId = `eigenleistung_summe${suffix}`;
+                const indexId = `eigenleistung_index${suffix}`;
+
+                const menge = parseNumber(getControlValue(mengeId));
+                const ep = parseNumber(getControlValue(epId));
+                const summe = roundToTwo(menge * ep);
+                debugLog(`Zeile ${idx + 1} (${suffix}): Menge=${menge}, EP=${ep}, Summe=${summe}`);
+
+                setControlValue(summeId, formatAmount(summe));
+                setControlValue(indexId, String(idx + 1));
+                total += summe;
+            });
+
+            const totalFormatted = formatAmount(total);
+            debugLog(`Eigenleistungen Total: ${totalFormatted}`);
+            setControlValue('summe_eigenleistungen', totalFormatted);
+            setControlValue('summary_eigenleistung', totalFormatted);
+            calculateGrandTotal();
+        } catch (error) {
+            debugLog('Fehler bei Eigenleistungsberechnung:', error);
         }
+    }
 
-        suffixes.forEach(suffix => {
-            const amountId = `eigenleistung_menge${suffix}`;
-            const epId = `eigenleistung_ep${suffix}`;
-            const sumId = `eigenleistung_summe${suffix}`;
+    // Berechne Fremdleistungen
+    function calculateFremdleistungen(): void {
+        debugLog('=== Berechne Fremdleistungen ===');
+        try {
+            const suffixes = getExistingSuffixes('fremdleistung_summe');
+            debugLog(`Anzahl Fremdleistungen: ${suffixes.length}`);
 
-            if (!fieldExists(amountId) && !fieldExists(epId)) {
-                return;
+            let netto = 0;
+            suffixes.forEach((suffix, idx) => {
+                const summeId = `fremdleistung_summe${suffix}`;
+                const indexId = `fremdleistung_index${suffix}`;
+                const summe = parseNumber(getControlValue(summeId));
+                debugLog(`Zeile ${idx + 1} (${suffix}): Summe=${summe}`);
+                setControlValue(indexId, String(idx + 1));
+                netto += summe;
+            });
+
+            const nettoRounded = roundToTwo(netto);
+            const mwst = roundToTwo(nettoRounded * MWST_RATE);
+            const brutto = roundToTwo(nettoRounded + mwst);
+            debugLog(`Fremdleistungen: Netto=${nettoRounded}, MwSt=${mwst}, Brutto=${brutto}`);
+            setControlValue('summe_fremdleistungen_netto', formatAmount(nettoRounded));
+            setControlValue('mwst_fremdleistungen', formatAmount(mwst));
+            setControlValue('summe_fremdleistungen_brutto', formatAmount(brutto));
+            setControlValue('summary_fremdleistung', formatAmount(brutto));
+            calculateGrandTotal();
+        } catch (error) {
+            debugLog('Fehler bei Fremdleistungsberechnung:', error);
+        }
+    }
+
+    // Berechne Gesamtsumme
+    function calculateGrandTotal(): void {
+        debugLog('=== Berechne Gesamtsumme ===');
+        
+        try {
+            const eigenTotal = parseNumber(getControlValue('summary_eigenleistung'));
+            const fremdTotal = parseNumber(getControlValue('summary_fremdleistung'));
+            const grandTotal = roundToTwo(eigenTotal + fremdTotal);
+            
+            debugLog(`Gesamtsumme: Eigen=${eigenTotal} + Fremd=${fremdTotal} = ${grandTotal}`);
+            
+            setControlValue('summary_gesamt', formatAmount(grandTotal));
+            
+            // Automatisch Fotos-Checkbox aktivieren bei >= 1500€
+            if (grandTotal >= 1500) {
+                setControlValue('beilage_fotos', true);
+                debugLog('Fotos-Checkbox aktiviert (>= 1500€)');
             }
+            
+        } catch (error) {
+            debugLog('Fehler bei Gesamtsummenberechnung:', error);
+        }
+    }
 
-            const menge = getFieldValue(amountId);
-            const einzelpreis = getFieldValue(epId);
-            const summe = menge * einzelpreis;
+    // Exportierte Funktionen für onChanged Callbacks
+    export function calculateEigenleistungRowRepeatable(this: any, value?: unknown, ctrl?: any): void {
+        debugLog('calculateEigenleistungRowRepeatable aufgerufen', { value, ctrl });
+        calculateEigenleistungen();
+    }
 
-            if (fieldExists(sumId)) {
-                setFieldValue(sumId, formatCurrency(summe));
+    export function calculateFremdleistungTotalRepeatable(this: any, value?: unknown, ctrl?: any): void {
+        debugLog('calculateFremdleistungTotalRepeatable aufgerufen', { value, ctrl });
+        calculateFremdleistungen();
+    }
+
+    // Test-Funktion für Debugging
+    export function testCallback(): void {
+        debugLog('TEST CALLBACK FUNKTIONIERT!');
+        alert('Test Callback funktioniert!');
+    }
+
+    // Event Handler für Repeating Units
+    function onEigenleistungAdded(): void {
+        debugLog('Eigenleistung hinzugefügt');
+        // Binde DOM Events für neue Zeile
+        setTimeout(() => {
+            const suffixes = getExistingSuffixes('eigenleistung_menge');
+            const latestSuffix = suffixes[suffixes.length - 1];
+            if (latestSuffix && !latestSuffix.includes('-kendoInput')) {
+                bindDOMEventsForSuffix(latestSuffix);
+            }
+            calculateEigenleistungen();
+        }, 100);
+    }
+
+    function onEigenleistungRemoved(): void {
+        debugLog('Eigenleistung entfernt');
+        setTimeout(calculateEigenleistungen, 100);
+    }
+
+    function onFremdleistungAdded(): void {
+        debugLog('Fremdleistung hinzugefügt');
+        // Binde DOM Events für neue Zeile
+        setTimeout(() => {
+            const suffixes = getExistingSuffixes('fremdleistung_summe');
+            const latestSuffix = suffixes[suffixes.length - 1];
+            if (latestSuffix && !latestSuffix.includes('-kendoInput')) {
+                bindDOMEventsForSuffix(latestSuffix);
+            }
+            calculateFremdleistungen();
+        }, 100);
+    }
+
+    function onFremdleistungRemoved(): void {
+        debugLog('Fremdleistung entfernt');
+        setTimeout(calculateFremdleistungen, 100);
+    }
+
+    // Hilfsfunktion für DOM Event Binding
+    function bindDOMEventsForSuffix(suffix: string): void {
+        ['eigenleistung_menge', 'eigenleistung_ep'].forEach(baseId => {
+            const id = `${baseId}${suffix}`;
+            const element = document.getElementById(id);
+            if (element) {
+                debugLog(`Registriere DOM Event Listener für neue Zeile ${id}`);
+                element.removeEventListener('input', calculateEigenleistungRowRepeatable);
+                element.removeEventListener('change', calculateEigenleistungRowRepeatable);
+                element.addEventListener('input', calculateEigenleistungRowRepeatable);
+                element.addEventListener('change', calculateEigenleistungRowRepeatable);
             }
         });
 
-        updateEigenleistungTotal();
-    }
-
-    function registerRepeatingUnitEvents(): void {
-        const api = getHybridFormsAPI();
-        const repeatingId = 'tab_eigenleistungen';
-        const repeatingFremdId = 'tab_fremdleistungen';
-
-        const scheduleApply = (rows: EigenleistungRowData[]) => {
-            window.requestAnimationFrame(() => {
-                applyEigenleistungRows(rows);
-                recalculateEigenleistungen();
-            });
-        };
-
-        const scheduleFremdApply = (rows: FremdleistungRowData[]) => {
-            window.requestAnimationFrame(() => {
-                applyFremdleistungRows(rows);
-                scheduleFremdleistungUpdate();
-            });
-        };
-
-        if (api?.RepeatingUnits?.addEventListener) {
-            api.RepeatingUnits.addEventListener(repeatingId, 'beforeadd', (index: number) => {
-                cachedEigenleistungRows = captureEigenleistungRows();
-                pendingAddIndex = index;
-            });
-
-            api.RepeatingUnits.addEventListener(repeatingId, 'beforeremove', (index: number) => {
-                cachedEigenleistungRows = captureEigenleistungRows();
-                pendingRemoveIndex = index;
-            });
-
-            api.RepeatingUnits.addEventListener(repeatingId, 'added', (index: number) => {
-                const rows = cachedEigenleistungRows.length ? [...cachedEigenleistungRows] : captureEigenleistungRows();
-                const insertIndex = index ?? pendingAddIndex ?? rows.length;
-                const safeIndex = Math.max(0, Math.min(insertIndex, rows.length));
-                rows.splice(safeIndex, 0, { menge: '', ep: '', sum: '0.00' });
-                cachedEigenleistungRows = [];
-                pendingAddIndex = null;
-                scheduleApply(rows);
-            });
-
-            api.RepeatingUnits.addEventListener(repeatingId, 'removed', (index: number) => {
-                const rows = cachedEigenleistungRows.length ? [...cachedEigenleistungRows] : captureEigenleistungRows();
-                const removeIndex = index ?? pendingRemoveIndex ?? -1;
-                if (removeIndex >= 0 && removeIndex < rows.length) {
-                    rows.splice(removeIndex, 1);
-                }
-                cachedEigenleistungRows = [];
-                pendingRemoveIndex = null;
-                scheduleApply(rows);
-            });
-
-            api.RepeatingUnits.addEventListener(repeatingFremdId, 'beforeadd', (index: number) => {
-                cachedFremdleistungRows = captureFremdleistungRows();
-                pendingFremdAddIndex = index;
-            });
-
-            api.RepeatingUnits.addEventListener(repeatingFremdId, 'beforeremove', (index: number) => {
-                cachedFremdleistungRows = captureFremdleistungRows();
-                pendingFremdRemoveIndex = index;
-            });
-
-            api.RepeatingUnits.addEventListener(repeatingFremdId, 'added', (index: number) => {
-                const rows = cachedFremdleistungRows.length ? [...cachedFremdleistungRows] : captureFremdleistungRows();
-                const insertIndex = index ?? pendingFremdAddIndex ?? rows.length;
-                const safeIndex = Math.max(0, Math.min(insertIndex, rows.length));
-                rows.splice(safeIndex, 0, { bezeichnung: '', rechnung: '', sum: '0.00' });
-                cachedFremdleistungRows = [];
-                pendingFremdAddIndex = null;
-                scheduleFremdApply(rows);
-            });
-
-            api.RepeatingUnits.addEventListener(repeatingFremdId, 'removed', (index: number) => {
-                const rows = cachedFremdleistungRows.length ? [...cachedFremdleistungRows] : captureFremdleistungRows();
-                const removeIndex = index ?? pendingFremdRemoveIndex ?? -1;
-                if (removeIndex >= 0 && removeIndex < rows.length) {
-                    rows.splice(removeIndex, 1);
-                }
-                cachedFremdleistungRows = [];
-                pendingFremdRemoveIndex = null;
-                scheduleFremdApply(rows);
-            });
-        }
-
-        if (api?.Page?.addEventListener) {
-            api.Page.addEventListener('rendered', () => window.requestAnimationFrame(() => recalculateEigenleistungen()));
-            api.Page.addEventListener('viewrendered', () => window.requestAnimationFrame(() => recalculateEigenleistungen()));
+        const fremdId = `fremdleistung_summe${suffix}`;
+        const fremdElement = document.getElementById(fremdId);
+        if (fremdElement) {
+            debugLog(`Registriere DOM Event Listener für neue Zeile ${fremdId}`);
+            fremdElement.removeEventListener('input', calculateFremdleistungTotalRepeatable);
+            fremdElement.removeEventListener('change', calculateFremdleistungTotalRepeatable);
+            fremdElement.addEventListener('input', calculateFremdleistungTotalRepeatable);
+            fremdElement.addEventListener('change', calculateFremdleistungTotalRepeatable);
         }
     }
 
-    function updateEigenleistungTotal(): void {
-        const inputs = Array.from(
-            document.querySelectorAll<HTMLInputElement>(
-                '[data-hf-id^="eigenleistung_summe" i], input[id^="eigenleistung_summe" i]'
-            )
-        );
-        let total = 0;
-        inputs.forEach(input => {
-            total += parseDecimal(input.value || input.getAttribute('value'));
-        });
+    // Hinweis: Direkte DOM Event Listener entfernt, wir nutzen wieder onChanged Callbacks
 
-        const totalFormatted = formatCurrency(total);
-        setFieldValue('summe_eigenleistungen', totalFormatted);
-        berechnungsManager.calculateGrandTotal();
-    }
-
-    export function calculateEigenleistungRowRepeatable(value?: unknown, ctrl?: any): void {
-        recalculateEigenleistungen();
-    }
-
-    let eigenleistungUpdateQueued = false;
-    let fremdleistungUpdateQueued = false;
-
-    function updateEigenleistungIndices(): void {
-        eigenleistungUpdateQueued = false;
-        const indexInputs = collectFieldElements('eigenleistung_index');
-        if (!indexInputs.length) {
-            return;
-        }
-
-        indexInputs.forEach((input, idx) => {
-            const newValue = String(idx + 1);
-            const fieldId = extractFieldIdFromElement(input);
-            if (!fieldId) {
-                return;
-            }
-
-            if (input.value !== newValue) {
-                input.value = newValue;
-                input.setAttribute('value', newValue);
-            }
-
-            setFieldValue(fieldId, newValue);
-        });
-
-        recalculateEigenleistungen();
-    }
-
-    function scheduleEigenleistungUpdate(): void {
-        if (eigenleistungUpdateQueued) {
-            return;
-        }
-        eigenleistungUpdateQueued = true;
-        window.requestAnimationFrame(updateEigenleistungIndices);
-    }
-
-    function updateFremdleistungIndices(): void {
-        fremdleistungUpdateQueued = false;
-        const indexInputs = collectFieldElements('fremdleistung_index');
-        if (!indexInputs.length) {
-            return;
-        }
-
-        indexInputs.forEach((input, idx) => {
-            const newValue = String(idx + 1);
-            const fieldId = extractFieldIdFromElement(input);
-            if (!fieldId) {
-                return;
-            }
-
-            if (input.value !== newValue) {
-                input.value = newValue;
-                input.setAttribute('value', newValue);
-            }
-
-            setFieldValue(fieldId, newValue);
-        });
-    }
-
-    function scheduleFremdleistungUpdate(): void {
-        if (fremdleistungUpdateQueued) {
-            return;
-        }
-        fremdleistungUpdateQueued = true;
-        window.requestAnimationFrame(updateFremdleistungIndices);
-    }
-
-    function observeEigenleistungen(): void {
-        scheduleEigenleistungUpdate();
-        scheduleFremdleistungUpdate();
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                if (mutation.type !== 'childList') {
-                    continue;
-                }
-                const addedRelevant = Array.from(mutation.addedNodes).some(node =>
-                    node instanceof HTMLElement && !!node.querySelector('input[id^="eigenleistung_index" i], input[id^="fremdleistung_index" i]'));
-                const removedRelevant = Array.from(mutation.removedNodes).some(node =>
-                    node instanceof HTMLElement && !!node.querySelector('input[id^="eigenleistung_index" i], input[id^="fremdleistung_index" i]'));
-                if (addedRelevant || removedRelevant) {
-                    scheduleEigenleistungUpdate();
-                    scheduleFremdleistungUpdate();
-                    return;
-                }
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-    }
-
+    // Initialisierung
     function initialize(): void {
-        registerRepeatingUnitEvents();
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', observeEigenleistungen, { once: true });
-        } else {
-            observeEigenleistungen();
+        debugLog('=== Initialisierung BehebungsprotokollHelper ===');
+        
+        // Warte auf HybridForms API
+        const checkAPI = () => {
+            if (isHybridFormsAvailable()) {
+                debugLog('HybridForms API verfügbar, registriere Event Handler');
+                
+                try {
+                    const api = getAPI();
+                    
+                    // Registriere Event Handler für Repeating Units
+                    if (api.RepeatingUnits?.addEventListener) {
+                        api.RepeatingUnits.addEventListener(EIGENLEISTUNG_REPEATING_ID, 'added', onEigenleistungAdded);
+                        api.RepeatingUnits.addEventListener(EIGENLEISTUNG_REPEATING_ID, 'removed', onEigenleistungRemoved);
+                        api.RepeatingUnits.addEventListener(FREMDLEISTUNG_REPEATING_ID, 'added', onFremdleistungAdded);
+                        api.RepeatingUnits.addEventListener(FREMDLEISTUNG_REPEATING_ID, 'removed', onFremdleistungRemoved);
+                        debugLog('Event Handler registriert');
+                    }
+
+                    // Registriere direkte DOM Event Listener als Fallback
+                    function bindDOMEvents(suffix: string) {
+                        ['eigenleistung_menge', 'eigenleistung_ep'].forEach(baseId => {
+                            const id = `${baseId}${suffix}`;
+                            const element = document.getElementById(id);
+                            if (element) {
+                                debugLog(`Registriere DOM Event Listener für ${id}`);
+                                // Entferne alte Listener
+                                element.removeEventListener('input', calculateEigenleistungRowRepeatable);
+                                element.removeEventListener('change', calculateEigenleistungRowRepeatable);
+                                // Füge neue Listener hinzu
+                                element.addEventListener('input', calculateEigenleistungRowRepeatable);
+                                element.addEventListener('change', calculateEigenleistungRowRepeatable);
+                                debugLog(`DOM Event Listener für ${id} registriert`);
+                            }
+                        });
+
+                        const fremdId = `fremdleistung_summe${suffix}`;
+                        const fremdElement = document.getElementById(fremdId);
+                        if (fremdElement) {
+                            debugLog(`Registriere DOM Event Listener für ${fremdId}`);
+                            // Entferne alte Listener
+                            fremdElement.removeEventListener('input', calculateFremdleistungTotalRepeatable);
+                            fremdElement.removeEventListener('change', calculateFremdleistungTotalRepeatable);
+                            // Füge neue Listener hinzu
+                            fremdElement.addEventListener('input', calculateFremdleistungTotalRepeatable);
+                            fremdElement.addEventListener('change', calculateFremdleistungTotalRepeatable);
+                            debugLog(`DOM Event Listener für ${fremdId} registriert`);
+                        }
+                    }
+
+                    // Binde DOM Events für existierende Controls
+                    getExistingSuffixes('eigenleistung_menge')
+                        .filter(suffix => !suffix.includes('-kendoInput'))
+                        .forEach(bindDOMEvents);
+                    
+                    // Registriere Page Refresh Handler
+                    if (api.Page?.addEventListener) {
+                        const refreshAll = () => {
+                            debugLog('Page refresh - berechne alle Werte');
+                            calculateEigenleistungen();
+                            calculateFremdleistungen();
+                        };
+                        
+                        api.Page.addEventListener('rendered', refreshAll);
+                        api.Page.addEventListener('viewrendered', refreshAll);
+                        debugLog('Page refresh Handler registriert');
+                    }
+                    
+        // Direkte DOM Event Listener werden nicht mehr verwendet; wir verlassen uns auf onChanged und RU-Events
+                    
+                    // Initiale Berechnung mit mehreren Versuchen
+                    setTimeout(() => {
+                        debugLog('Erste Berechnung nach 500ms');
+                        calculateEigenleistungen();
+                        calculateFremdleistungen();
+                    }, 500);
+                    
+                    setTimeout(() => {
+                        debugLog('Zweite Berechnung nach 2000ms');
+                        calculateEigenleistungen();
+                        calculateFremdleistungen();
+                    }, 2000);
+                    
+                    setTimeout(() => {
+                        debugLog('Dritte Berechnung nach 5000ms');
+                        calculateEigenleistungen();
+                        calculateFremdleistungen();
+                    }, 5000);
+                    
+                } catch (error) {
+                    debugLog('Fehler bei der Initialisierung:', error);
+                }
+            } else {
+                debugLog('HybridForms API noch nicht verfügbar, versuche erneut in 100ms');
+                setTimeout(checkAPI, 100);
+            }
+        };
+        
+        checkAPI();
+    }
+
+    // Expose Funktionen global
+    function exposeToGlobal(): void {
+        debugLog('Expose Funktionen zu globalem Namespace');
+        
+        const globalObj = window as any;
+        
+        // Stelle sicher dass Namespace existiert
+        if (!globalObj.HFFormdefinition) {
+            globalObj.HFFormdefinition = {};
         }
+        if (!globalObj.HFFormdefinition.BehebungsprotokollHelper) {
+            globalObj.HFFormdefinition.BehebungsprotokollHelper = {};
+        }
+        
+        // Expose Funktionen
+        globalObj.HFFormdefinition.BehebungsprotokollHelper.calculateEigenleistungRowRepeatable = calculateEigenleistungRowRepeatable;
+        globalObj.HFFormdefinition.BehebungsprotokollHelper.calculateFremdleistungTotalRepeatable = calculateFremdleistungTotalRepeatable;
+        globalObj.HFFormdefinition.BehebungsprotokollHelper.testCallback = testCallback;
+        
+        // Test-Funktionen
+        globalObj.HFFormdefinition.BehebungsprotokollHelper.testCalculation = () => {
+            debugLog('=== MANUELLER TEST ===');
+            calculateEigenleistungen();
+            calculateFremdleistungen();
+        };
+        
+        globalObj.HFFormdefinition.BehebungsprotokollHelper.testControls = () => {
+            debugLog('=== CONTROL TEST ===');
+            debugLog('Controls bereit:', areControlsReady());
+            debugLog('Eigenleistungen Count:', getRepeatingCount(EIGENLEISTUNG_REPEATING_ID));
+            debugLog('Fremdleistungen Count:', getRepeatingCount(FREMDLEISTUNG_REPEATING_ID));
+        };
+        
+        debugLog('Funktionen erfolgreich exponiert');
     }
 
-    initialize();
-
-    if (typeof WinJS !== 'undefined' && WinJS.Utilities && WinJS.Utilities.markSupportedForProcessing) {
-        WinJS.Utilities.markSupportedForProcessing(HFFormdefinition.BehebungsprotokollHelper.calculateEigenleistungRowRepeatable);
+    // Starte Initialisierung
+    exposeToGlobal();
+    
+    // Warte bis DOM geladen ist
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize();
     }
+    
+    // Zusätzlich nach kurzer Verzögerung
+    setTimeout(initialize, 1000);
 }
+
+
