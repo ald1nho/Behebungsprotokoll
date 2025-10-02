@@ -105,21 +105,16 @@ var HFFormdefinition;
                 return isFinite(value) ? value : 0;
             }
             if (typeof value === 'string') {
-                // Deutsche Formatierung: Tausenderpunkt entfernen, Dezimalkomma zu Punkt
-                var cleaned = value.replace(/[^\d.,-]/g, '');
+                var cleaned = value.toString();
+                var hasCommaDecimal = cleaned.indexOf(',') > cleaned.lastIndexOf('.');
+                var hasDotThousand = cleaned.match(/\d{1,3}(\.\d{3})+,\d{2}$/);
 
-                // Unterscheide deutsche und englische Formatierung
-                if (cleaned.includes(',')) {
-                    // Deutsche Formatierung: 1.234,56 -> 1234.56
-                    var lastComma = cleaned.lastIndexOf(',');
-                    var lastDot = cleaned.lastIndexOf('.');
-
-                    if (lastComma > lastDot) {
-                        // Komma ist Dezimaltrennzeichen, Punkte sind Tausendertrennzeichen
-                        cleaned = cleaned.substring(0, lastComma).replace(/\./g, '') + '.' + cleaned.substring(lastComma + 1);
-                    } else {
-                        // Punkt ist Dezimaltrennzeichen, Kommas ersetzen
-                        cleaned = cleaned.replace(/,/g, '');
+                if (hasDotThousand || hasCommaDecimal) {
+                    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+                } else {
+                    cleaned = cleaned.replace(/[^\d.,-]/g, '');
+                    if (cleaned.includes(',')) {
+                        cleaned = cleaned.replace(',', '.');
                     }
                 }
 
@@ -132,7 +127,6 @@ var HFFormdefinition;
             if (!isFinite(value)) {
                 return '0,00';
             }
-            // Deutsche Formatierung: Tausenderpunkt, Dezimalkomma
             var formatted = value.toFixed(2);
             var parts = formatted.split('.');
             var integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -141,6 +135,65 @@ var HFFormdefinition;
         }
         function roundToTwo(value) {
             return Math.round((value + Number.EPSILON) * 100) / 100;
+        }
+        function configureGermanFormatting() {
+            debugLog('Konfiguriere deutsche Zahlenformatierung');
+            var eigenSuffixes = getExistingSuffixes('eigenleistung_menge');
+            var fremdSuffixes = getExistingSuffixes('fremdleistung_summe');
+
+            eigenSuffixes.forEach(function(suffix) {
+                var mengeCtrl = getControl('eigenleistung_menge' + suffix);
+                var epCtrl = getControl('eigenleistung_ep' + suffix);
+                var summeCtrl = getControl('eigenleistung_summe' + suffix);
+
+                if (mengeCtrl && typeof mengeCtrl.setKendoOptions === 'function') {
+                    mengeCtrl.setKendoOptions({
+                        culture: 'de-DE',
+                        decimals: 2,
+                        format: 'n2'
+                    });
+                }
+                if (epCtrl && typeof epCtrl.setKendoOptions === 'function') {
+                    epCtrl.setKendoOptions({
+                        culture: 'de-DE',
+                        decimals: 2,
+                        format: 'n2'
+                    });
+                }
+                if (summeCtrl && typeof summeCtrl.setKendoOptions === 'function') {
+                    summeCtrl.setKendoOptions({
+                        culture: 'de-DE',
+                        decimals: 2,
+                        format: 'n2'
+                    });
+                }
+            });
+
+            var summaryControls = ['summe_eigenleistungen', 'summe_fremdleistungen_netto', 'mwst_fremdleistungen', 'summe_fremdleistungen_brutto', 'summary_eigenleistung', 'summary_fremdleistung', 'summary_gesamt'];
+            summaryControls.forEach(function(id) {
+                var ctrl = getControl(id);
+                if (ctrl && typeof ctrl.setKendoOptions === 'function') {
+                    ctrl.setKendoOptions({
+                        culture: 'de-DE',
+                        decimals: 2,
+                        format: 'n2'
+                    });
+                }
+            });
+        }
+        function areControlsReady() {
+            var count = getRepeatingCount(EIGENLEISTUNG_REPEATING_ID);
+            var readyCount = 0;
+            for (var i = 1; i <= count; i++) {
+                var suffix = "_hfrepeating_".concat(i);
+                var mengeElement = document.getElementById("eigenleistung_menge".concat(suffix));
+                var epElement = document.getElementById("eigenleistung_ep".concat(suffix));
+                if (mengeElement && epElement) {
+                    readyCount++;
+                }
+            }
+            debugLog("Controls bereit: ".concat(readyCount, "/").concat(count));
+            return readyCount === count && count > 0;
         }
         function getExistingSuffixes(baseIdPrefix) {
             var suffixes = [];
@@ -243,26 +296,6 @@ var HFFormdefinition;
         }
         function calculateEigenleistungRowRepeatable(value, ctrl) {
             debugLog('calculateEigenleistungRowRepeatable aufgerufen', { value: value, ctrl: ctrl });
-
-            // Formatiere den eingegebenen Wert sofort mit deutscher Formatierung
-            if (ctrl && typeof ctrl.val === 'function' && value !== null && value !== undefined && value !== '') {
-                var numericValue = parseNumber(value);
-                if (numericValue !== 0 || value === 0 || value === '0') {
-                    setTimeout(function() {
-                        var formattedValue = formatAmount(numericValue);
-                        debugLog('Formatiere Eigenleistung von ' + value + ' zu ' + formattedValue);
-                        ctrl.val(formattedValue, true); // true = disable onChanged to prevent loop
-
-                        // Zusätzlich: DOM Element direkt setzen als Backup
-                        var element = ctrl.element;
-                        if (element && element.length > 0) {
-                            element.val(formattedValue);
-                            debugLog('DOM Backup gesetzt für Eigenleistung: ' + formattedValue);
-                        }
-                    }, 50);
-                }
-            }
-
             calculateEigenleistungen();
         }
         BehebungsprotokollHelper.calculateEigenleistungRowRepeatable = calculateEigenleistungRowRepeatable;
@@ -271,48 +304,11 @@ var HFFormdefinition;
             calculateFremdleistungen();
         }
         BehebungsprotokollHelper.calculateFremdleistungTotalRepeatable = calculateFremdleistungTotalRepeatable;
-        function configureGermanFormatting() {
-            debugLog('=== Konfiguriere deutsche Zahlenformatierung ===');
-            try {
-                // Finde alle NumericField Controls und konfiguriere sie (nur Eigenleistungen)
-                var numericFields = [
-                    'eigenleistung_menge', 'eigenleistung_ep'
-                ];
-
-                // Konfiguriere vorhandene Felder
-                numericFields.forEach(function(baseId) {
-                    var suffixes = getExistingSuffixes(baseId);
-                    suffixes.forEach(function(suffix) {
-                        var fieldId = baseId + suffix;
-                        var ctrl = getControl(fieldId);
-                        if (ctrl && typeof ctrl.setKendoOptions === 'function') {
-                            ctrl.setKendoOptions({
-                                culture: 'de-DE',
-                                decimals: 2,
-                                format: 'n2'
-                            });
-                            debugLog("Deutsche Formatierung gesetzt für: " + fieldId);
-                        }
-                    });
-                });
-
-                // Konfiguriere auch die ersten Felder (ohne Suffix)
-                numericFields.forEach(function(baseId) {
-                    var ctrl = getControl(baseId);
-                    if (ctrl && typeof ctrl.setKendoOptions === 'function') {
-                        ctrl.setKendoOptions({
-                            culture: 'de-DE',
-                            decimals: 2,
-                            format: 'n2'
-                        });
-                        debugLog("Deutsche Formatierung gesetzt für: " + baseId);
-                    }
-                });
-            }
-            catch (error) {
-                debugLog('Fehler bei der Formatierungskonfiguration:', error);
-            }
+        function testCallback() {
+            debugLog('TEST CALLBACK FUNKTIONIERT!');
+            alert('Test Callback funktioniert!');
         }
+        BehebungsprotokollHelper.testCallback = testCallback;
         function onEigenleistungAdded() {
             debugLog('Eigenleistung hinzugefügt');
             setTimeout(function () {
@@ -337,6 +333,7 @@ var HFFormdefinition;
                 if (latestSuffix && !latestSuffix.includes('-kendoInput')) {
                     bindDOMEventsForSuffix(latestSuffix);
                 }
+                configureGermanFormatting();
                 calculateFremdleistungen();
             }, 100);
         }
@@ -420,16 +417,19 @@ var HFFormdefinition;
                         }
                         setTimeout(function () {
                             debugLog('Erste Berechnung nach 500ms');
+                            configureGermanFormatting();
                             calculateEigenleistungen();
                             calculateFremdleistungen();
                         }, 500);
                         setTimeout(function () {
                             debugLog('Zweite Berechnung nach 2000ms');
+                            configureGermanFormatting();
                             calculateEigenleistungen();
                             calculateFremdleistungen();
                         }, 2000);
                         setTimeout(function () {
                             debugLog('Dritte Berechnung nach 5000ms');
+                            configureGermanFormatting();
                             calculateEigenleistungen();
                             calculateFremdleistungen();
                         }, 5000);
@@ -456,7 +456,18 @@ var HFFormdefinition;
             }
             globalObj.HFFormdefinition.BehebungsprotokollHelper.calculateEigenleistungRowRepeatable = calculateEigenleistungRowRepeatable;
             globalObj.HFFormdefinition.BehebungsprotokollHelper.calculateFremdleistungTotalRepeatable = calculateFremdleistungTotalRepeatable;
-            globalObj.HFFormdefinition.BehebungsprotokollHelper.configureGermanFormatting = configureGermanFormatting;
+            globalObj.HFFormdefinition.BehebungsprotokollHelper.testCallback = testCallback;
+            globalObj.HFFormdefinition.BehebungsprotokollHelper.testCalculation = function () {
+                debugLog('=== MANUELLER TEST ===');
+                calculateEigenleistungen();
+                calculateFremdleistungen();
+            };
+            globalObj.HFFormdefinition.BehebungsprotokollHelper.testControls = function () {
+                debugLog('=== CONTROL TEST ===');
+                debugLog('Controls bereit:', areControlsReady());
+                debugLog('Eigenleistungen Count:', getRepeatingCount(EIGENLEISTUNG_REPEATING_ID));
+                debugLog('Fremdleistungen Count:', getRepeatingCount(FREMDLEISTUNG_REPEATING_ID));
+            };
             debugLog('Funktionen erfolgreich exponiert');
         }
         exposeToGlobal();
