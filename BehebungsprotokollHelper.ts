@@ -109,33 +109,107 @@ namespace HFFormdefinition.BehebungsprotokollHelper {
         }
     }
 
-    // Parse Zahl aus verschiedenen Formaten
+    // Parse Zahl aus verschiedenen Formaten (unterstützt deutsche und englische Formatierung)
     function parseNumber(value: any): number {
         if (value === null || value === undefined || value === '') {
             return 0;
         }
-        
+
         if (typeof value === 'number') {
             return isFinite(value) ? value : 0;
         }
-        
+
         if (typeof value === 'string') {
-            const cleaned = value.replace(/[^\d.,-]/g, '').replace(',', '.');
+            let cleaned = value.toString();
+
+            // Erkenne deutsches Format (1.234,56) vs englisches Format (1,234.56)
+            const hasCommaDecimal = cleaned.indexOf(',') > cleaned.lastIndexOf('.');
+            const hasDotThousand = cleaned.match(/\d{1,3}(\.\d{3})+,\d{2}$/);
+
+            if (hasDotThousand || hasCommaDecimal) {
+                // Deutsches Format: Entferne Tausenderpunkte, wandle Komma zu Punkt
+                cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+            } else {
+                // Fallback: Entferne alle nicht-numerischen Zeichen außer letztem Dezimaltrennzeichen
+                cleaned = cleaned.replace(/[^\d.,-]/g, '');
+                if (cleaned.includes(',')) {
+                    cleaned = cleaned.replace(',', '.');
+                }
+            }
+
             const parsed = parseFloat(cleaned);
             return isNaN(parsed) ? 0 : parsed;
         }
-        
+
         return 0;
     }
 
-    // Formatiere Betrag
+    // Formatiere Betrag im deutschen Format (1.234,56)
     function formatAmount(value: number): string {
-        return isFinite(value) ? value.toFixed(2) : '0.00';
+        if (!isFinite(value)) {
+            return '0,00';
+        }
+
+        // Deutsche Zahlenformatierung: Punkt als Tausendertrennzeichen, Komma als Dezimaltrennzeichen
+        const formatted = value.toFixed(2);
+        const parts = formatted.split('.');
+        const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const decimalPart = parts[1];
+
+        return integerPart + ',' + decimalPart;
     }
 
     // Runde auf 2 Dezimalstellen
     function roundToTwo(value: number): number {
         return Math.round((value + Number.EPSILON) * 100) / 100;
+    }
+
+    // Konfiguriere deutsche Zahlenformatierung für Kendo Controls
+    function configureGermanFormatting(): void {
+        debugLog('Konfiguriere deutsche Zahlenformatierung');
+
+        const eigenSuffixes = getExistingSuffixes('eigenleistung_menge');
+        const fremdSuffixes = getExistingSuffixes('fremdleistung_summe');
+
+        eigenSuffixes.forEach((suffix) => {
+            const mengeCtrl = getControl('eigenleistung_menge' + suffix);
+            const epCtrl = getControl('eigenleistung_ep' + suffix);
+            const summeCtrl = getControl('eigenleistung_summe' + suffix);
+
+            if (mengeCtrl && typeof mengeCtrl.setKendoOptions === 'function') {
+                mengeCtrl.setKendoOptions({
+                    culture: 'de-DE',
+                    decimals: 2,
+                    format: 'n2'
+                });
+            }
+            if (epCtrl && typeof epCtrl.setKendoOptions === 'function') {
+                epCtrl.setKendoOptions({
+                    culture: 'de-DE',
+                    decimals: 2,
+                    format: 'n2'
+                });
+            }
+            if (summeCtrl && typeof summeCtrl.setKendoOptions === 'function') {
+                summeCtrl.setKendoOptions({
+                    culture: 'de-DE',
+                    decimals: 2,
+                    format: 'n2'
+                });
+            }
+        });
+
+        const summaryControls = ['summe_eigenleistungen', 'summe_fremdleistungen_netto', 'mwst_fremdleistungen', 'summe_fremdleistungen_brutto', 'summary_eigenleistung', 'summary_fremdleistung', 'summary_gesamt'];
+        summaryControls.forEach((id) => {
+            const ctrl = getControl(id);
+            if (ctrl && typeof ctrl.setKendoOptions === 'function') {
+                ctrl.setKendoOptions({
+                    culture: 'de-DE',
+                    decimals: 2,
+                    format: 'n2'
+                });
+            }
+        });
     }
 
     // Prüfe ob alle Controls verfügbar sind
@@ -302,6 +376,7 @@ namespace HFFormdefinition.BehebungsprotokollHelper {
             if (latestSuffix && !latestSuffix.includes('-kendoInput')) {
                 bindDOMEventsForSuffix(latestSuffix);
             }
+            configureGermanFormatting();
             calculateEigenleistungen();
         }, 100);
     }
@@ -320,6 +395,7 @@ namespace HFFormdefinition.BehebungsprotokollHelper {
             if (latestSuffix && !latestSuffix.includes('-kendoInput')) {
                 bindDOMEventsForSuffix(latestSuffix);
             }
+            configureGermanFormatting();
             calculateFremdleistungen();
         }, 100);
     }
@@ -431,18 +507,21 @@ namespace HFFormdefinition.BehebungsprotokollHelper {
                     // Initiale Berechnung mit mehreren Versuchen
                     setTimeout(() => {
                         debugLog('Erste Berechnung nach 500ms');
+                        configureGermanFormatting();
                         calculateEigenleistungen();
                         calculateFremdleistungen();
                     }, 500);
                     
                     setTimeout(() => {
                         debugLog('Zweite Berechnung nach 2000ms');
+                        configureGermanFormatting();
                         calculateEigenleistungen();
                         calculateFremdleistungen();
                     }, 2000);
                     
                     setTimeout(() => {
                         debugLog('Dritte Berechnung nach 5000ms');
+                        configureGermanFormatting();
                         calculateEigenleistungen();
                         calculateFremdleistungen();
                     }, 5000);
